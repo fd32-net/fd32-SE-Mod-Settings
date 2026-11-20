@@ -38,6 +38,8 @@ settings window for each one, styled like the vanilla game.
   - [Applying: validate and refuse](#applying-validate-and-refuse)
 - [Messages and confirmations](#messages-and-confirmations)
 - [Saving values](#saving-values)
+  - [Option 1: built-in saving](#option-1-built-in-saving)
+  - [Option 2: your mod stores the values itself](#option-2-your-mod-stores-the-values-itself)
 - [Your own window](#your-own-window)
 - [Without the hub, load order](#without-the-hub-load-order)
 - [Rules and limitations](#rules-and-limitations)
@@ -86,8 +88,8 @@ public class MyModSettings : MySessionComponentBase
         ShowHints = Menu.Toggle("hints", "Show hints", true);
         LinkKey   = Menu.Hotkey("link", "Link", MyKeys.R);
 
-        Menu.LoadFromLocalStorage();                       // restore saved values (optional)
-        Menu.Applied += () => Menu.SaveToLocalStorage();   // save after OK
+        Menu.LoadFromLocalStorage();                       // optional: built-in saving,
+        Menu.Applied += () => Menu.SaveToLocalStorage();   // or store values yourself
         Menu.Register();                                   // hand the menu to the hub
     }
 
@@ -106,6 +108,9 @@ public class MyModSettings : MySessionComponentBase
 
 **4. In the game:** press **Esc**, click the **gear** to the right of **Options**, and pick **My Mod**.
 Change something and press **OK**. The new values are now in `Speed.Value`, `ShowHints.Value`, `LinkKey`.
+
+> **Saving is optional.** The two `LocalStorage` lines turn on the built-in saving of Mod Settings. Remove them if your
+> mod stores its values itself; see [Saving values](#saving-values) for an example.
 
 That is all a typical mod needs. The rest of this document covers every feature in detail.
 
@@ -480,8 +485,12 @@ Menu.Button("Reset everything", () =>
 
 ## Saving values
 
-**The hub does not store anything.** Your mod sets `.Value` at load time and saves values when it chooses.
-The simplest way is the built-in helper:
+**Saving is optional.** The hub itself stores nothing. The client file can save and load the values for you,
+but you do not have to use that: your mod can store them any way it likes. Choose one of the two options below.
+
+### Option 1: built-in saving
+
+Two lines, and the values survive a game restart:
 
 ```csharp
 // after describing all settings, before Register()
@@ -500,8 +509,84 @@ Menu.Applied += () => Menu.SaveToLocalStorage();
   ```
 - On loading: a key missing from the file keeps its current value, unknown keys are skipped, and a corrupt value
   becomes the default (with a line in the log). `Changed` is not raised.
-- **Your own storage** works just as well: set `.Value` from your config in `LoadData`, and save it in `Applied`
-  or in individual `Changed` handlers.
+
+### Option 2: your mod stores the values itself
+
+Use this when the mod already has its own config, or needs a different file, format or place.
+Do not call `LoadFromLocalStorage` / `SaveToLocalStorage`. Instead, put your values into `.Value` at load time and
+read them back after OK. For example, a mod that keeps an XML config:
+
+```csharp
+using System;
+using ModSettings;
+using Sandbox.ModAPI;
+using VRage.Utils;
+
+// Your mod's own config: any class SerializeToXML can handle (public fields or properties)
+public class MyConfig
+{
+    public float  Speed     = 20;
+    public bool   ShowHints = true;
+    public string LinkKey   = "R";              // HotkeyValue.ToString(): "R", "Ctrl+R", "" = none
+
+    const string FileName = "MyMod.xml";
+
+    public static MyConfig Load()
+    {
+        try
+        {
+            if (MyAPIGateway.Utilities.FileExistsInLocalStorage(FileName, typeof(MyConfig)))
+                using (var r = MyAPIGateway.Utilities.ReadFileInLocalStorage(FileName, typeof(MyConfig)))
+                    return MyAPIGateway.Utilities.SerializeFromXML<MyConfig>(r.ReadToEnd());
+        }
+        catch (Exception e)
+        {
+            MyLog.Default.WriteLine("MyMod: config not loaded: " + e.Message);
+        }
+        return new MyConfig();
+    }
+
+    public void Save()
+    {
+        using (var w = MyAPIGateway.Utilities.WriteFileInLocalStorage(FileName, typeof(MyConfig)))
+            w.Write(MyAPIGateway.Utilities.SerializeToXML(this));
+    }
+}
+```
+
+```csharp
+public override void LoadData()
+{
+    Menu      = new SettingsMenu("mymod", "My Mod", "1.0");
+    Speed     = Menu.Number("speed", "Cruise speed", 20).Range(0, 100).Step(5).Unit("m/s");
+    ShowHints = Menu.Toggle("hints", "Show hints", true);
+    LinkKey   = Menu.Hotkey("link", "Link", MyKeys.R);
+
+    // 1. your config → settings (no LoadFromLocalStorage)
+    Config = MyConfig.Load();
+    Speed.Value     = Config.Speed;
+    ShowHints.Value = Config.ShowHints;
+    HotkeyValue key;
+    if (HotkeyValue.TryParse(Config.LinkKey, out key))
+        LinkKey.Value = key;
+
+    // 2. after OK → settings back into your config and its file (no SaveToLocalStorage)
+    Menu.Applied += () =>
+    {
+        Config.Speed     = Speed.Value;
+        Config.ShowHints = ShowHints.Value;
+        Config.LinkKey   = LinkKey.Value.ToString();
+        Config.Save();
+    };
+
+    Menu.Register();
+}
+```
+
+- Setting `.Value` does not raise `Changed` and saves nothing. It is just "this is the current value".
+- Values are normalized when assigned: a hand-edited `Speed = 500` in the XML becomes `100` because of `Range(0, 100)`.
+- **Defaults** in the window come from the defaults you pass to `Number` / `Toggle` / ..., not from your config.
+- Instead of `Applied`, you can save individual settings in their `Changed` handlers.
 
 ---
 
@@ -572,7 +657,7 @@ Look at the game log: `%AppData%\SpaceEngineers\SpaceEngineers_*.log`.
 | `Data/Scripts/ModSettings/` | The hub: the gear in the Esc menu (`HubSession.cs`, `Menu.cs`), the window (`SettingsWindow.cs`), the GUI helper (`Gx.cs`), hub strings (`Loc.cs`). |
 | `Data/TransparentMaterials_ModSettings.sbc` | Materials over vanilla GUI textures. |
 | `ModSettings.csproj` | Compile check only: `dotnet build ModSettings.csproj` (set `SEBin64` to your `SpaceEngineers\Bin64`). It does not check the whitelist; only the game does. |
-| `DESIGN.md`, `TESTS.md` | Design notes and in-game test plans (in Russian). |
+| `TESTS.md` | In-game test plans (in Russian). |
 
 ## License
 

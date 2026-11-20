@@ -1,6 +1,6 @@
 // Mod Settings — клиентский файл (протокол 1). Скопируйте его в свой мод без изменений:
 // Data\Scripts\<ВашМод>\ModSettings.cs. Центр «Mod Settings» укажите у мода обязательной зависимостью Workshop.
-// Описание API — DESIGN.md центра. Пример:
+// Описание API — README центра: https://github.com/fd32-net/fd32-SE-Mod-Settings. Пример:
 //
 //   Menu = new SettingsMenu("mymod", "My Mod", "1.0");
 //   Menu.Info("# My Mod\nЧто делает мод и как им пользоваться.");      // правая колонка окна

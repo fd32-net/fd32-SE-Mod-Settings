@@ -38,6 +38,8 @@
   - [Applying: проверка и отказ](#applying-проверка-и-отказ)
 - [Сообщения и вопросы игроку](#сообщения-и-вопросы-игроку)
 - [Сохранение значений](#сохранение-значений)
+  - [Вариант 1: встроенное сохранение](#вариант-1-встроенное-сохранение)
+  - [Вариант 2: мод хранит значения сам](#вариант-2-мод-хранит-значения-сам)
 - [Своё окно](#своё-окно)
 - [Без центра и порядок загрузки](#без-центра-и-порядок-загрузки)
 - [Правила и ограничения](#правила-и-ограничения)
@@ -86,8 +88,8 @@ public class MyModSettings : MySessionComponentBase
         ShowHints = Menu.Toggle("hints", "Показывать подсказки", true);
         LinkKey   = Menu.Hotkey("link", "Связать", MyKeys.R);
 
-        Menu.LoadFromLocalStorage();                       // загрузить сохранённое (необязательно)
-        Menu.Applied += () => Menu.SaveToLocalStorage();   // сохранить после «ОК»
+        Menu.LoadFromLocalStorage();                       // необязательно: встроенное сохранение,
+        Menu.Applied += () => Menu.SaveToLocalStorage();   // можно хранить значения и самому
         Menu.Register();                                   // отдать меню центру
     }
 
@@ -106,6 +108,9 @@ public class MyModSettings : MySessionComponentBase
 
 **4. В игре:** нажмите **Esc**, затем **шестерёнку** справа от **«Настроек»** и выберите **My Mod**.
 Измените что-нибудь и нажмите **«ОК»**: новые значения окажутся в `Speed.Value`, `ShowHints.Value` и `LinkKey`.
+
+> **Сохранение — по желанию.** Две строки с `LocalStorage` включают встроенное сохранение Mod Settings. Если мод хранит
+> значения сам, уберите их; пример — в разделе [Сохранение значений](#сохранение-значений).
 
 Обычному моду больше ничего не нужно. Дальше подробно разобраны все возможности.
 
@@ -478,8 +483,12 @@ Menu.Button("Сбросить всё", () =>
 
 ## Сохранение значений
 
-**Центр ничего не хранит.** Мод сам задаёт `.Value` при загрузке и сохраняет значения, когда считает нужным.
-Проще всего воспользоваться встроенным помощником:
+**Сохранение — по желанию мода.** Центр сам ничего не хранит. Клиентский файл умеет сохранять и загружать значения за вас,
+но пользоваться этим не обязательно: мод может хранить их как угодно. Выберите один из двух вариантов ниже.
+
+### Вариант 1: встроенное сохранение
+
+Две строки — и значения переживают перезапуск игры:
 
 ```csharp
 // после описания всех настроек, до Register()
@@ -498,8 +507,84 @@ Menu.Applied += () => Menu.SaveToLocalStorage();
   ```
 - При загрузке: если ключа нет в файле, значение остаётся прежним; лишние ключи пропускаются; испорченное значение
   заменяется значением по умолчанию (со строкой в логе). `Changed` не вызывается.
-- **Своё хранение** подойдёт не хуже: задайте `.Value` из своего конфига в `LoadData` и сохраняйте в `Applied`
-  или в `Changed` отдельных настроек.
+
+### Вариант 2: мод хранит значения сам
+
+Подходит, если у мода уже есть свой конфиг или нужен другой файл, формат или место хранения.
+`LoadFromLocalStorage` / `SaveToLocalStorage` не вызываются: мод сам кладёт свои значения в `.Value` при загрузке
+и забирает их после «ОК». Например, мод со своим XML-конфигом:
+
+```csharp
+using System;
+using ModSettings;
+using Sandbox.ModAPI;
+using VRage.Utils;
+
+// Свой конфиг мода: любой класс, который понимает SerializeToXML (публичные поля или свойства)
+public class MyConfig
+{
+    public float  Speed     = 20;
+    public bool   ShowHints = true;
+    public string LinkKey   = "R";              // HotkeyValue.ToString(): "R", "Ctrl+R", "" — клавиши нет
+
+    const string FileName = "MyMod.xml";
+
+    public static MyConfig Load()
+    {
+        try
+        {
+            if (MyAPIGateway.Utilities.FileExistsInLocalStorage(FileName, typeof(MyConfig)))
+                using (var r = MyAPIGateway.Utilities.ReadFileInLocalStorage(FileName, typeof(MyConfig)))
+                    return MyAPIGateway.Utilities.SerializeFromXML<MyConfig>(r.ReadToEnd());
+        }
+        catch (Exception e)
+        {
+            MyLog.Default.WriteLine("MyMod: конфиг не прочитан: " + e.Message);
+        }
+        return new MyConfig();
+    }
+
+    public void Save()
+    {
+        using (var w = MyAPIGateway.Utilities.WriteFileInLocalStorage(FileName, typeof(MyConfig)))
+            w.Write(MyAPIGateway.Utilities.SerializeToXML(this));
+    }
+}
+```
+
+```csharp
+public override void LoadData()
+{
+    Menu      = new SettingsMenu("mymod", "My Mod", "1.0");
+    Speed     = Menu.Number("speed", "Скорость круиза", 20).Range(0, 100).Step(5).Unit("м/с");
+    ShowHints = Menu.Toggle("hints", "Показывать подсказки", true);
+    LinkKey   = Menu.Hotkey("link", "Связать", MyKeys.R);
+
+    // 1. свой конфиг → настройки (LoadFromLocalStorage не нужен)
+    Config = MyConfig.Load();
+    Speed.Value     = Config.Speed;
+    ShowHints.Value = Config.ShowHints;
+    HotkeyValue key;
+    if (HotkeyValue.TryParse(Config.LinkKey, out key))
+        LinkKey.Value = key;
+
+    // 2. после «ОК» → настройки обратно в свой конфиг и его файл (SaveToLocalStorage не нужен)
+    Menu.Applied += () =>
+    {
+        Config.Speed     = Speed.Value;
+        Config.ShowHints = ShowHints.Value;
+        Config.LinkKey   = LinkKey.Value.ToString();
+        Config.Save();
+    };
+
+    Menu.Register();
+}
+```
+
+- Присвоение `.Value` не вызывает `Changed` и ничего не сохраняет — это просто «вот текущее значение».
+- При присвоении значения приводятся к правилам: если в XML вручную написать `Speed = 500`, из-за `Range(0, 100)` получится `100`.
+- **«По умолчанию»** в окне берёт значения по умолчанию, переданные в `Number` / `Toggle` / …, а не из вашего конфига.
+- Вместо `Applied` можно сохранять отдельные настройки в их обработчиках `Changed`.
 
 ---
 
@@ -570,7 +655,7 @@ tab.Button("Редактор маршрута...", () => new RouteEditor().Open(
 | `Data/Scripts/ModSettings/` | Центр: шестерёнка в меню Esc (`HubSession.cs`, `Menu.cs`), окно (`SettingsWindow.cs`), помощник GUI (`Gx.cs`), надписи центра (`Loc.cs`). |
 | `Data/TransparentMaterials_ModSettings.sbc` | Материалы на ванильных текстурах GUI. |
 | `ModSettings.csproj` | Только проверка компиляции: `dotnet build ModSettings.csproj` (укажите в `SEBin64` свою папку `SpaceEngineers\Bin64`). Whitelist не проверяет, это делает только игра. |
-| `DESIGN.md`, `TESTS.md` | Проект API и планы проверок в игре. |
+| `TESTS.md` | Планы проверок в игре. |
 
 ## Лицензия
 
