@@ -1,0 +1,43 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    Compile-check / IntelliSense project only. Space Engineers compiles Data/Scripts itself;
+    this project just catches C# errors before launching the game (it does NOT check the mod whitelist).
+    Build:  dotnet build ModSettings.csproj
+    Outputs go to %TEMP%\ModSettingsModBuild so nothing extra lands in the mod folder.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net481</TargetFramework>
+    <OutputType>Library</OutputType>
+    <!-- SE's in-game mod compiler: keep to C# 6 syntax (no out var, tuples, etc.). -->
+    <LangVersion>6</LangVersion>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <OutputPath>$(TEMP)\ModSettingsModBuild\bin\</OutputPath>
+    <NoWarn>$(NoWarn);CS0168;CS0169;CS0414;CS0649;CS0219</NoWarn>
+    <SEBin64 Condition="'$(SEBin64)' == ''">F:\Games\SteamLibrary\steamapps\common\SpaceEngineers\Bin64</SEBin64>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="Data\Scripts\**\*.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="Sandbox.Common"><HintPath>$(SEBin64)\Sandbox.Common.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="Sandbox.Game"><HintPath>$(SEBin64)\Sandbox.Game.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="Sandbox.Graphics"><HintPath>$(SEBin64)\Sandbox.Graphics.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="SpaceEngineers.Game"><HintPath>$(SEBin64)\SpaceEngineers.Game.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="SpaceEngineers.ObjectBuilders"><HintPath>$(SEBin64)\SpaceEngineers.ObjectBuilders.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="VRage"><HintPath>$(SEBin64)\VRage.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="VRage.Game"><HintPath>$(SEBin64)\VRage.Game.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="VRage.Input"><HintPath>$(SEBin64)\VRage.Input.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="VRage.Library"><HintPath>$(SEBin64)\VRage.Library.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="VRage.Math"><HintPath>$(SEBin64)\VRage.Math.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="VRage.Render"><HintPath>$(SEBin64)\VRage.Render.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="VRage.Audio"><HintPath>$(SEBin64)\VRage.Audio.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="ProtoBuf.Net"><HintPath>$(SEBin64)\ProtoBuf.Net.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="ProtoBuf.Net.Core"><HintPath>$(SEBin64)\ProtoBuf.Net.Core.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="System.Collections.Immutable"><HintPath>$(SEBin64)\System.Collections.Immutable.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="netstandard"><HintPath>$(SEBin64)\netstandard.dll</HintPath><Private>false</Private></Reference>
+  </ItemGroup>
+</Project>

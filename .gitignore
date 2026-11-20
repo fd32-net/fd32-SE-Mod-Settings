@@ -1,0 +1,7 @@
+bin/
+obj/
+*.user
+.vs/
+
+# local Claude Code notes (personal paths)
+CLAUDE.md
