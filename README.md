@@ -6,7 +6,7 @@ settings window for each one, styled like the vanilla game.
 
 [Русская версия](README.ru.md)
 
-> **Status:** in development (V0.8.6). The client API below has been checked in-game. The Workshop page is not published yet.
+> **Status:** V0.8.6, published on the Steam Workshop: [fd32: Mod Settings](https://steamcommunity.com/sharedfiles/filedetails/?id=3842864536) (ID `3842864536`). The client API below has been checked in-game.
 
 - No chat commands, no config files to explain to players: everything happens in a familiar game window.
 - Vanilla look and feel: checkboxes, sliders, text fields, combo boxes and key bindings look and behave like the
@@ -59,8 +59,8 @@ settings window for each one, styled like the vanilla game.
 
 Each mod is compiled separately, so the same class names in different mods do not conflict.
 
-**2. Make Mod Settings a required dependency** of your mod on the Steam Workshop, so the game downloads the hub
-automatically. To test locally, put this repository into `%AppData%\SpaceEngineers\Mods\Mod Settings` and add both mods to the world.
+**2. Make [Mod Settings](https://steamcommunity.com/sharedfiles/filedetails/?id=3842864536) (Workshop ID `3842864536`) a required dependency** of your mod on the Steam Workshop,
+so the game downloads the hub automatically. To test locally, put this repository into `%AppData%\SpaceEngineers\Mods\Mod Settings` and add both mods to the world.
 
 **3. Describe your settings** in a session component:
 

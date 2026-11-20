@@ -8,3 +8,7 @@ CLAUDE.md
 
 # design notes stay local
 DESIGN.md
+
+# Steam Workshop page and publish script (local paths)
+Workshop/
+publish-steam.cmd
