@@ -708,6 +708,8 @@ Values have no keys: they are identified by **their order**. `.Tooltip(text)` wo
   slots, or of the wrong type, fall back to the defaults. A choice is stored as its key, so you can reorder its options.
 - `ModUI.IsReady` asks the hub whether it can draw the window (at most once a second). Without the hub nothing is asked,
   and the action is not placed. Whether to hide the action is up to your mod.
+- On a dedicated server `ModUI.IsReady` is always `true`: the game checks an action's `Enabled` before it runs it too,
+  and timers there must run it. Client files before V0.9.2 returned `false` there - copy the new `ModUI.cs`.
 
 **Your own action.** If you build the `IMyTerminalAction` yourself, use a form with the same value methods:
 

@@ -1119,11 +1119,15 @@ namespace Fd32.ModUI
         static long checkedAt;              // 0 — ещё не проверяли
 
         // Центр с окном ввода есть и отвечает (проверка не чаще раза в секунду). Без центра окна ввода нет —
-        // мод сам решает, прятать ли действие: a.Enabled(b => ModUI.IsReady).
+        // мод сам решает, прятать ли действие: a.Enabled(b => ModUI.IsReady). На выделенном сервере — всегда true:
+        // окна там не бывает, а таймеры и контроллеры событий жмут слоты там, и игра проверяет Enabled действия
+        // и перед выполнением (MyTerminalAction.Apply) — с false действие на сервере не выполнилось бы.
         public static bool IsReady
         {
             get
             {
+                if (MyAPIGateway.Utilities != null && MyAPIGateway.Utilities.IsDedicated)
+                    return true;
                 long now = DateTime.UtcNow.Ticks;
                 if (checkedAt != 0 && now >= checkedAt && now - checkedAt < TimeSpan.TicksPerSecond)
                     return ready;
@@ -1298,7 +1302,7 @@ namespace Fd32.ModUI
 
         internal void Show(Action<FormValues, string> ok, Action cancel)
         {
-            if (!ModUI.IsReady)
+            if (MyAPIGateway.Utilities.IsDedicated || !ModUI.IsReady)
             {
                 ModUI.Log(Caption + ": центра Mod UI нет — окна ввода не будет");
                 cancel();
