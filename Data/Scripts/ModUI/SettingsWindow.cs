@@ -5,7 +5,7 @@ using VRage.Input;
 using VRage.Utils;
 using VRageMath;
 
-namespace ModSettings
+namespace Fd32.ModUI
 {
     // Окно настроек мода — как терминал: слева список закладок, посередине настройки закладки, справа текст мода
     // (Menu.Info / tab.Info). Панель — ванильная MyModScreen во весь экран (как в Ore config). Внизу «По умолчанию»,
@@ -13,9 +13,11 @@ namespace ModSettings
     // Крестик рисуем сами: ванильный — кнопка с фокусом, Enter и Пробел её нажимают (окно закрывалось по Enter).
     public class SettingsWindow : MyModScreen
     {
-        static readonly RectangleF Win = new RectangleF(0.02f, 0.05f, 0.96f, 0.90f);
-        const float CaptionY = 0.10f, ColTop = 0.15f, FooterTop = 0.862f, ColBottom = 0.847f;
-        const float LX = 0.045f, RX = 0.955f, ListW = 0.20f, MidW = 0.42f, Gap = 0.015f, ScrollW = 0.008f;
+        static readonly RectangleF FullWin = new RectangleF(0.02f, 0.05f, 0.96f, 0.90f);
+        // Раскладка: у окна настроек — постоянная, у окна ввода (форма) — по числу значений (FormLayout).
+        readonly RectangleF Win;
+        readonly float CaptionY, CaptionLine, ColTop, FooterTop, ColBottom, LX, RX;
+        const float ListW = 0.20f, MidW = 0.42f, Gap = 0.015f, ScrollW = 0.008f;
         const float TabRowH = 0.038f, CtrlH = 0.04f, BtnW = 0.176f, BtnH = 0.052f, FieldW = 0.085f, Indent = 0.015f;
         static readonly MyStringId TexTriangle = MyStringId.GetOrCompute("Triangle");
 
@@ -67,10 +69,31 @@ namespace ModSettings
             public void Set(float v, float viewH) { Offset = Math.Max(0f, Math.Min(Math.Max(0f, ContentH - viewH), v)); }
         }
 
-        public SettingsWindow(MenuEntry menu)
-            : base("ModSettings_Settings", new Vector2(Win.X + Win.Width / 2f, Win.Y + Win.Height / 2f), new Vector2(Win.Width, Win.Height), Vector4.One)
+        // Окно ввода значений (Set-действие тулбара): null — обычное окно настроек.
+        readonly FormRequest form;
+        bool labelManual;                   // игрок сам правил подпись — по шаблону её больше не пересчитываем
+        bool labelWarned;
+
+        public SettingsWindow(MenuEntry menu) : this(menu, null, FullWin) { }
+
+        public SettingsWindow(FormRequest request) : this(request.AsMenu(), request, FormLayout(request)) { }
+
+        SettingsWindow(MenuEntry menu, FormRequest request, RectangleF win)
+            : base("ModUI_Settings", new Vector2(win.X + win.Width / 2f, win.Y + win.Height / 2f), new Vector2(win.Width, win.Height), Vector4.One)
         {
             Menu = menu;
+            form = request;
+            Win = win;
+            if (form == null)
+            {
+                CaptionY = 0.10f; CaptionLine = 0.13f; ColTop = 0.15f; FooterTop = 0.862f; ColBottom = 0.847f; LX = 0.045f; RX = 0.955f;
+            }
+            else
+            {
+                CaptionY = win.Y + FormCaptionY; CaptionLine = win.Y + FormCaptionLine; ColTop = win.Y + FormColTop;
+                ColBottom = win.Y + win.Height - FormFooterH; FooterTop = ColBottom + 0.005f;
+                LX = win.X + FormPad; RX = win.X + win.Width - FormPad;
+            }
             CloseButtonEnabled = false;
             EnabledBackgroundFade = true;
             g.OnPress = keep =>
@@ -85,14 +108,16 @@ namespace ModSettings
                 if (it.Kind == "group" && it.Collapsible && it.Collapsed)
                     collapsed.Add(it);
             }
-            hasInfo = menu.HasInfo;
-            midX = LX + ListW + Gap;
+            hasInfo = form == null && menu.HasInfo;
+            midX = form == null ? LX + ListW + Gap : LX;
             midW = hasInfo ? MidW : RX - midX;
             infoX = midX + midW + Gap;
             infoW = RX - infoX;
             Pull(true);
             CallEdit("");                   // моду: окно открыто (Opened, Editing с Changed = null)
             UpdateConflicts();
+            if (form != null)
+                FormOpened();
         }
 
         static RectangleF R(float x, float y, float w, float h) { return new RectangleF(x, y, w, h); }
@@ -164,6 +189,8 @@ namespace ModSettings
         {
             bool differs = edit[it.Key] != s;
             Set(it, s);
+            if (form != null)
+                FormChanged(it);
             if (differs)
                 CallEdit(it.Key);
         }
@@ -464,7 +491,10 @@ namespace ModSettings
                     }
                     else if (ch == '\r' || ch == '\n')
                     {
+                        var from = fieldItem;
                         CommitField();
+                        if (form != null)
+                            FormEnter(from);  // окно ввода: следующее поле, на последнем — «ОК»
                         return;
                     }
                     else if (!char.IsControl(ch))
@@ -509,6 +539,11 @@ namespace ModSettings
         void Ok()
         {
             CommitField();
+            if (form != null)
+            {
+                FormOk();
+                return;
+            }
             if (!Changed)
                 return;
             string[] result;
@@ -541,10 +576,175 @@ namespace ModSettings
             info.Offset = 0f;
         }
 
+        // ---- окно ввода значений (Set-действие тулбара) ----
+
+        const float FormW = 0.5f, FormPad = 0.025f, FormCaptionY = 0.045f, FormCaptionLine = 0.075f, FormColTop = 0.09f;
+        const float FormBtnW = 0.176f * 0.75f, FormBtnH = 0.052f * 0.85f;
+        const float FormFooterH = 0.005f + 0.013f + FormBtnH + 0.025f;
+
+        // Размер окна ввода: ширина как у ванильного «Количества», высота — по значениям (не выше 0.9, дальше прокрутка).
+        static RectangleF FormLayout(FormRequest f)
+        {
+            float content = 0.006f + 0.01f;
+            foreach (var it in f.Items)
+                content += FormItemHeight(it);
+            float h = Math.Min(0.9f, FormColTop + content + FormFooterH);
+            return new RectangleF(0.5f - FormW / 2f, 0.5f - h / 2f, FormW, h);
+        }
+
+        // Высота строки — как её рисует DrawItemBody.
+        static float FormItemHeight(Item it)
+        {
+            switch (it.Kind)
+            {
+                case "separator": return 0.02f;
+                case "toggle": return 0.051f;
+                case "number":
+                case "choice":
+                case "text": return 0.03f + CtrlH + 0.014f;
+            }
+            return 0.04f;
+        }
+
+        // Поля ввода по порядку (Enter переходит по ним); подпись — не в цепочке.
+        List<Item> FormFields()
+        {
+            var r = new List<Item>();
+            foreach (var it in form.Values)
+                if ((it.Kind == "number" && (it.Parts & Item.PartField) != 0) || it.Kind == "text")
+                    r.Add(it);
+            return r;
+        }
+
+        void FocusField(Item it)
+        {
+            StartField(it);
+            anchor = 0;                     // всё выделено — набранное заменит значение (как у ванили)
+            caret = fieldText.Length;
+        }
+
+        void FormOpened()
+        {
+            if (form.AskLabel)
+                edit[FormRequest.LabelKey] = FormLabel();
+            var fields = FormFields();
+            if (fields.Count > 0)
+                FocusField(fields[0]);
+        }
+
+        // Enter в поле: следующее поле ввода; на последнем (и в подписи) — «ОК».
+        void FormEnter(Item from)
+        {
+            if (from != null && from.Key != FormRequest.LabelKey)
+            {
+                var fields = FormFields();
+                int i = fields.IndexOf(from);
+                if (i >= 0 && i + 1 < fields.Count)
+                {
+                    FocusField(fields[i + 1]);
+                    return;
+                }
+            }
+            Ok();
+        }
+
+        // Игрок поменял значение: подпись пересчитывается по шаблону, пока её не правили руками.
+        void FormChanged(Item it)
+        {
+            if (!form.AskLabel)
+                return;
+            if (it.Key == FormRequest.LabelKey)
+                labelManual = edit[FormRequest.LabelKey] != FormLabel();
+            else if (!labelManual)
+                edit[FormRequest.LabelKey] = FormLabel();
+        }
+
+        // Подпись по шаблону мода ({0}, {1}… — значения по порядку) или, без шаблона, значения через пробел (число с единицей).
+        // Не длиннее 9 символов — дальше игра всё равно обрежет.
+        string FormLabel()
+        {
+            var parts = new string[form.Values.Count];
+            for (int i = 0; i < parts.Length; i++)
+            {
+                var it = form.Values[i];
+                string s = edit[it.Key];
+                if (it.Kind == "number")
+                {
+                    s = Num.Show(it, N(it));
+                    if (form.Template == null && !string.IsNullOrEmpty(it.Unit))
+                        s += " " + it.Unit;
+                }
+                else if (it.Kind == "choice")
+                    s = it.OptionLabel(s);
+                parts[i] = s ?? "";
+            }
+            string label;
+            if (form.Template == null)
+                label = string.Join(" ", parts);
+            else
+            {
+                try
+                {
+                    label = string.Format(form.Template, parts);
+                }
+                catch (FormatException)
+                {
+                    if (!labelWarned)
+                        Log.Write(form.Owner + ": неверный шаблон подписи \"" + form.Template + "\" — показан как есть");
+                    labelWarned = true;
+                    label = form.Template;
+                }
+            }
+            label = label.Replace("\r", "").Replace('\n', ' ');
+            if (label.Length > FormRequest.LabelMax)
+            {
+                if (form.Template != null && !labelWarned)
+                    Log.Write(form.Owner + ": подпись \"" + label + "\" длиннее " + FormRequest.LabelMax + " символов — обрезана (предел игры)");
+                labelWarned = true;
+                label = label.Substring(0, FormRequest.LabelMax);
+            }
+            return label;
+        }
+
+        // «ОК»: проверка мода (отказ — сообщение, окно остаётся), потом значения и подпись — моду.
+        void FormOk()
+        {
+            var values = new Dictionary<string, string>();
+            foreach (var it in form.Values)
+                values[it.Key] = edit[it.Key];
+            string label = form.AskLabel ? edit[FormRequest.LabelKey] : FormLabel();
+            string[] result;
+            try
+            {
+                result = form.Check != null ? form.Check(new Dictionary<string, string>(values)) : null;
+            }
+            catch (Exception e)
+            {
+                Log.Write("проверка " + form.Owner + ": " + e);
+                new MessageWindow(Loc.ErrorCaption, Loc.ModFailed).Open();
+                return;
+            }
+            if (result != null && result.Length > 0 && result[0] != null)
+            {
+                errorKey = result.Length > 1 ? result[1] : null;
+                new MessageWindow(Loc.ErrorCaption, result[0]).Open();
+                return;
+            }
+            closedByOk = true;
+            CloseNow();
+            form.SafeOk(values, label);
+        }
+
         // ---- MyModScreen ----
 
         protected override void OnClosed(bool isUnloading)
         {
+            if (form != null)
+            {
+                if (!closedByOk && !isUnloading)
+                    form.SafeCancel();
+                return;
+            }
             if (!isUnloading)
                 HubSession.SafeCommand(Menu, closedByOk ? "closed:ok" : "closed:cancel");
         }
@@ -578,8 +778,17 @@ namespace ModSettings
                 CaptureInput();
                 return;
             }
-            if (fieldKey != null)
+            bool hadField = fieldKey != null;
+            if (hadField)
                 FieldInput();
+            if (!IsOpen)
+                return;                     // Enter в последнем поле нажал «ОК» и закрыл окно
+            // окно ввода: Enter вне поля — «ОК», как у ванильного окна «Количество»
+            if (form != null && !hadField && openChoice == null && IsOpen && MyAPIGateway.Input.IsNewKeyPressed(MyKeys.Enter))
+            {
+                Ok();
+                return;
+            }
             g.Input();
         }
 
@@ -587,7 +796,7 @@ namespace ModSettings
         {
             frame++;
             blink++;
-            if (frame % 30 == 0)
+            if (frame % 30 == 0 && form == null)
             {
                 Pull(false);                // мод мог сам поменять значения,
                 CallEdit(null);             // доступность и видимость
@@ -597,11 +806,13 @@ namespace ModSettings
             DrawMouseCursor = capture == null;
             g.Begin(alpha);
             g.Blocked = openChoice != null || capture != null;
-            g.Text(Menu.Name, 0.5f, CaptionY, 0.8f, Color.White, Gx.Center, Win.Width - 0.2f, "ScreenCaption");
-            g.Text(Menu.Version, LX, CaptionY, 0.6f, Gx.DimColor, Gx.LeftCenter);
-            g.HLine(LX, 0.13f, RX - LX, Gx.Line);
+            g.Text(Menu.Name, 0.5f, CaptionY, 0.8f, Color.White, Gx.Center, Win.Width - (form == null ? 0.2f : 0.08f), "ScreenCaption");
+            if (form == null)
+                g.Text(Menu.Version, LX, CaptionY, 0.6f, Gx.DimColor, Gx.LeftCenter);
+            g.HLine(LX, CaptionLine, RX - LX, Gx.Line);
 
-            DrawTabs();
+            if (form == null)
+                DrawTabs();
             DrawMiddle();
             if (hasInfo)
                 DrawInfo();
@@ -609,10 +820,19 @@ namespace ModSettings
             // низ
             g.HLine(LX, FooterTop, RX - LX, Gx.Line);
             float by = FooterTop + 0.013f;
-            float sx = RX - BtnW, cx = sx - 0.008f - BtnW;
-            g.Button(R(sx, by, BtnW, BtnH), Loc.Ok, Ok, false, Changed || fieldKey != null);
-            g.Button(R(cx, by, BtnW, BtnH), Loc.Cancel, () => CloseNow());
-            g.Button(R(LX, by, BtnW, BtnH), Loc.Defaults, Defaults, false, NotDefault, Gx.TextScale, Loc.DefaultsTip);
+            if (form == null)
+            {
+                float sx = RX - BtnW, cx = sx - 0.008f - BtnW;
+                g.Button(R(sx, by, BtnW, BtnH), Loc.Ok, Ok, false, Changed || fieldKey != null);
+                g.Button(R(cx, by, BtnW, BtnH), Loc.Cancel, () => CloseNow());
+                g.Button(R(LX, by, BtnW, BtnH), Loc.Defaults, Defaults, false, NotDefault, Gx.TextScale, Loc.DefaultsTip);
+            }
+            else
+            {
+                // как у ванильного окна «Количество»: «ОК» слева от середины, «Отмена» справа
+                g.Button(R(0.5f - 0.004f - FormBtnW, by, FormBtnW, FormBtnH), Loc.Ok, Ok);
+                g.Button(R(0.5f + 0.004f, by, FormBtnW, FormBtnH), Loc.Cancel, () => CloseNow());
+            }
 
             // крестик как у ванили: стиль Close 34x31 px, правый верхний угол окна + (-0.013, 0.015)
             const float xw = 34f / 1600f, xh = 31f / 1200f;
@@ -1169,7 +1389,7 @@ namespace ModSettings
         Action<bool> answer;
 
         public MessageWindow(string caption, string message, Action<bool> answer = null, string owner = null)
-            : base("ModSettings_Message", new Vector2(0.5f, 0.5f), new Vector2(W, Height(message)), Vector4.One)
+            : base("ModUI_Message", new Vector2(0.5f, 0.5f), new Vector2(W, Height(message)), Vector4.One)
         {
             this.caption = caption;
             this.answer = answer;

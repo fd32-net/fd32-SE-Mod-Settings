@@ -1,7 +1,7 @@
 using Sandbox.ModAPI;
 using VRage;
 
-namespace ModSettings
+namespace Fd32.ModUI
 {
     // Надписи центра: русский при русском языке игры, иначе английский.
     public static class Loc
@@ -35,6 +35,9 @@ namespace ModSettings
         public static string PressKeyHint { get { return T("Esc - отмена, Delete - очистить", "Esc - cancel, Delete - clear"); } }
         public static string KeyBusy { get { return T("Эта клавиша занята: ", "This key is also used by: "); } }
         public static string InGame { get { return T("игра", "game"); } }
+        public static string ToolbarLabel { get { return T("Подпись на панели", "Toolbar label"); } }
+        public static string ToolbarLabelTip { get { return T("Текст под значком на панели действий: не длиннее 9 символов",
+                                                               "Text under the icon on the toolbar: up to 9 characters"); } }
         public static string Empty { get { return T("У этого мода нет настроек.", "This mod has no settings."); } }
     }
 }

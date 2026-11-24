@@ -5,7 +5,7 @@ using VRage.Game.Components;
 using VRage.Utils;
 using VRageMath;
 
-namespace ModSettings
+namespace Fd32.ModUI
 {
     // Положение кнопок меню Esc (MyGuiScreenMainMenu.CreateInGameMenu, 1.211). Все Y — доли высоты экрана.
     // Опорная точка кнопки k снизу (1 = «Выход в главное меню», 2 = «Настройки»): центр-низ,
@@ -87,7 +87,7 @@ namespace ModSettings
     [MySessionComponentDescriptor(MyUpdateOrder.NoUpdate)]
     public class HubSession : MySessionComponentBase
     {
-        public const string Version = "V0.8.6";
+        public const string Version = "V0.9.1";
         public const long Channel = 3291573804L;     // канал SendModMessage центра
         public const int Protocol = 1;
 
@@ -95,9 +95,9 @@ namespace ModSettings
 
         public readonly List<MenuEntry> Menus = new List<MenuEntry>();   // по алфавиту имён
 
-        static readonly MyStringId TexGear = MyStringId.GetOrCompute("ModSettings_button_filter_system");
-        static readonly MyStringId TexGearHover = MyStringId.GetOrCompute("ModSettings_button_filter_system_highlight");
-        static readonly MyStringId TexGearActive = MyStringId.GetOrCompute("ModSettings_button_filter_system_active");
+        static readonly MyStringId TexGear = MyStringId.GetOrCompute("ModUI_button_filter_system");
+        static readonly MyStringId TexGearHover = MyStringId.GetOrCompute("ModUI_button_filter_system_highlight");
+        static readonly MyStringId TexGearActive = MyStringId.GetOrCompute("ModUI_button_filter_system_active");
 
         readonly Gx g = new Gx { Layer = MyScreenSpaceLayer.AboveEverything };
         readonly HashSet<object> covering = new HashSet<object>();   // окна поверх меню Esc (настройки игры, окна модов…)
@@ -111,7 +111,7 @@ namespace ModSettings
             Instance = this;
             if (MyAPIGateway.Utilities.IsDedicated)
                 return;
-            Log.Write("Mod Settings " + Version + " loaded");
+            Log.Write("Mod UI " + Version + " loaded");
             MyAPIGateway.Utilities.RegisterMessageHandler(Channel, OnMessage);
             if (MyAPIGateway.Gui != null)
             {
@@ -154,6 +154,10 @@ namespace ModSettings
                     OnUnregister(a);
                 else if (kind == "ModSettings.Show")
                     OnShow(a);
+                else if (kind == "ModUI.Hello")
+                    OnHello(a);
+                else if (kind == "ModUI.Ask")
+                    OnAsk(a);
             }
             catch (Exception e)
             {
@@ -184,7 +188,7 @@ namespace ModSettings
             int proto = (int)a[1];
             if (proto > Protocol)
             {
-                Log.Write("меню " + m.Id + ": протокол " + proto + " новее центра (" + Protocol + ") — нужен новый Mod Settings");
+                Log.Write("меню " + m.Id + ": протокол " + proto + " новее центра (" + Protocol + ") — нужен новый Mod UI");
                 SafeCommand(m, "refused:" + Protocol);
                 return;
             }
@@ -231,6 +235,30 @@ namespace ModSettings
                 caption = answer != null ? Loc.ConfirmCaption : m != null ? m.Name : "";
             }
             new MessageWindow(caption, text, answer, id).Open();
+        }
+
+        // { "ModUI.Hello", Action<int> ответ } — клиент проверяет, есть ли центр с окном ввода (ModUI.IsReady).
+        void OnHello(object[] a)
+        {
+            var reply = a.Length > 1 ? a[1] as Action<int> : null;
+            if (reply != null)
+                reply(FormRequest.Protocol);
+        }
+
+        // Окно ввода значений для Set-действия тулбара (FormRequest.Parse).
+        void OnAsk(object[] a)
+        {
+            string error;
+            var f = FormRequest.Parse(a, out error);
+            if (f == null)
+            {
+                Log.Write("окно ввода: " + error);
+                var cancel = a.Length > 9 ? a[9] as Action : null;
+                if (cancel != null)
+                    cancel();
+                return;
+            }
+            new SettingsWindow(f).Open();
         }
 
         void OnUnregister(object[] a)

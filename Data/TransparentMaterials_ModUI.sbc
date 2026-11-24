@@ -4,7 +4,7 @@
 <Definitions xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
   <TransparentMaterials>
     <TransparentMaterial>
-      <Id><TypeId>TransparentMaterialDefinition</TypeId><SubtypeId>ModSettings_button_default</SubtypeId></Id>
+      <Id><TypeId>TransparentMaterialDefinition</TypeId><SubtypeId>ModUI_button_default</SubtypeId></Id>
       <AlphaMistingEnable>false</AlphaMistingEnable>
       <CanBeAffectedByOtherLights>false</CanBeAffectedByOtherLights>
       <IgnoreDepth>true</IgnoreDepth>
@@ -12,7 +12,7 @@
       <UseAtlas>false</UseAtlas>
     </TransparentMaterial>
     <TransparentMaterial>
-      <Id><TypeId>TransparentMaterialDefinition</TypeId><SubtypeId>ModSettings_button_default_highlight</SubtypeId></Id>
+      <Id><TypeId>TransparentMaterialDefinition</TypeId><SubtypeId>ModUI_button_default_highlight</SubtypeId></Id>
       <AlphaMistingEnable>false</AlphaMistingEnable>
       <CanBeAffectedByOtherLights>false</CanBeAffectedByOtherLights>
       <IgnoreDepth>true</IgnoreDepth>
@@ -20,7 +20,7 @@
       <UseAtlas>false</UseAtlas>
     </TransparentMaterial>
     <TransparentMaterial>
-      <Id><TypeId>TransparentMaterialDefinition</TypeId><SubtypeId>ModSettings_button_default_active</SubtypeId></Id>
+      <Id><TypeId>TransparentMaterialDefinition</TypeId><SubtypeId>ModUI_button_default_active</SubtypeId></Id>
       <AlphaMistingEnable>false</AlphaMistingEnable>
       <CanBeAffectedByOtherLights>false</CanBeAffectedByOtherLights>
       <IgnoreDepth>true</IgnoreDepth>
@@ -28,7 +28,7 @@
       <UseAtlas>false</UseAtlas>
     </TransparentMaterial>
     <TransparentMaterial>
-      <Id><TypeId>TransparentMaterialDefinition</TypeId><SubtypeId>ModSettings_button_default_focus</SubtypeId></Id>
+      <Id><TypeId>TransparentMaterialDefinition</TypeId><SubtypeId>ModUI_button_default_focus</SubtypeId></Id>
       <AlphaMistingEnable>false</AlphaMistingEnable>
       <CanBeAffectedByOtherLights>false</CanBeAffectedByOtherLights>
       <IgnoreDepth>true</IgnoreDepth>
@@ -36,7 +36,7 @@
       <UseAtlas>false</UseAtlas>
     </TransparentMaterial>
     <TransparentMaterial>
-      <Id><TypeId>TransparentMaterialDefinition</TypeId><SubtypeId>ModSettings_button_stripe_left</SubtypeId></Id>
+      <Id><TypeId>TransparentMaterialDefinition</TypeId><SubtypeId>ModUI_button_stripe_left</SubtypeId></Id>
       <AlphaMistingEnable>false</AlphaMistingEnable>
       <CanBeAffectedByOtherLights>false</CanBeAffectedByOtherLights>
       <IgnoreDepth>true</IgnoreDepth>
@@ -44,7 +44,7 @@
       <UseAtlas>false</UseAtlas>
     </TransparentMaterial>
     <TransparentMaterial>
-      <Id><TypeId>TransparentMaterialDefinition</TypeId><SubtypeId>ModSettings_button_stripe_left_highlight</SubtypeId></Id>
+      <Id><TypeId>TransparentMaterialDefinition</TypeId><SubtypeId>ModUI_button_stripe_left_highlight</SubtypeId></Id>
       <AlphaMistingEnable>false</AlphaMistingEnable>
       <CanBeAffectedByOtherLights>false</CanBeAffectedByOtherLights>
       <IgnoreDepth>true</IgnoreDepth>
@@ -52,7 +52,7 @@
       <UseAtlas>false</UseAtlas>
     </TransparentMaterial>
     <TransparentMaterial>
-      <Id><TypeId>TransparentMaterialDefinition</TypeId><SubtypeId>ModSettings_button_stripe_left_active</SubtypeId></Id>
+      <Id><TypeId>TransparentMaterialDefinition</TypeId><SubtypeId>ModUI_button_stripe_left_active</SubtypeId></Id>
       <AlphaMistingEnable>false</AlphaMistingEnable>
       <CanBeAffectedByOtherLights>false</CanBeAffectedByOtherLights>
       <IgnoreDepth>true</IgnoreDepth>
@@ -60,7 +60,7 @@
       <UseAtlas>false</UseAtlas>
     </TransparentMaterial>
     <TransparentMaterial>
-      <Id><TypeId>TransparentMaterialDefinition</TypeId><SubtypeId>ModSettings_checkbox_checked</SubtypeId></Id>
+      <Id><TypeId>TransparentMaterialDefinition</TypeId><SubtypeId>ModUI_checkbox_checked</SubtypeId></Id>
       <AlphaMistingEnable>false</AlphaMistingEnable>
       <CanBeAffectedByOtherLights>false</CanBeAffectedByOtherLights>
       <IgnoreDepth>true</IgnoreDepth>
@@ -68,7 +68,7 @@
       <UseAtlas>false</UseAtlas>
     </TransparentMaterial>
     <TransparentMaterial>
-      <Id><TypeId>TransparentMaterialDefinition</TypeId><SubtypeId>ModSettings_checkbox_unchecked</SubtypeId></Id>
+      <Id><TypeId>TransparentMaterialDefinition</TypeId><SubtypeId>ModUI_checkbox_unchecked</SubtypeId></Id>
       <AlphaMistingEnable>false</AlphaMistingEnable>
       <CanBeAffectedByOtherLights>false</CanBeAffectedByOtherLights>
       <IgnoreDepth>true</IgnoreDepth>
@@ -76,7 +76,7 @@
       <UseAtlas>false</UseAtlas>
     </TransparentMaterial>
     <TransparentMaterial>
-      <Id><TypeId>TransparentMaterialDefinition</TypeId><SubtypeId>ModSettings_checkbox_checked_highlight</SubtypeId></Id>
+      <Id><TypeId>TransparentMaterialDefinition</TypeId><SubtypeId>ModUI_checkbox_checked_highlight</SubtypeId></Id>
       <AlphaMistingEnable>false</AlphaMistingEnable>
       <CanBeAffectedByOtherLights>false</CanBeAffectedByOtherLights>
       <IgnoreDepth>true</IgnoreDepth>
@@ -84,7 +84,7 @@
       <UseAtlas>false</UseAtlas>
     </TransparentMaterial>
     <TransparentMaterial>
-      <Id><TypeId>TransparentMaterialDefinition</TypeId><SubtypeId>ModSettings_checkbox_unchecked_highlight</SubtypeId></Id>
+      <Id><TypeId>TransparentMaterialDefinition</TypeId><SubtypeId>ModUI_checkbox_unchecked_highlight</SubtypeId></Id>
       <AlphaMistingEnable>false</AlphaMistingEnable>
       <CanBeAffectedByOtherLights>false</CanBeAffectedByOtherLights>
       <IgnoreDepth>true</IgnoreDepth>
@@ -92,7 +92,7 @@
       <UseAtlas>false</UseAtlas>
     </TransparentMaterial>
     <TransparentMaterial>
-      <Id><TypeId>TransparentMaterialDefinition</TypeId><SubtypeId>ModSettings_slider_rail_left</SubtypeId></Id>
+      <Id><TypeId>TransparentMaterialDefinition</TypeId><SubtypeId>ModUI_slider_rail_left</SubtypeId></Id>
       <AlphaMistingEnable>false</AlphaMistingEnable>
       <CanBeAffectedByOtherLights>false</CanBeAffectedByOtherLights>
       <IgnoreDepth>true</IgnoreDepth>
@@ -100,7 +100,7 @@
       <UseAtlas>false</UseAtlas>
     </TransparentMaterial>
     <TransparentMaterial>
-      <Id><TypeId>TransparentMaterialDefinition</TypeId><SubtypeId>ModSettings_slider_rail_center</SubtypeId></Id>
+      <Id><TypeId>TransparentMaterialDefinition</TypeId><SubtypeId>ModUI_slider_rail_center</SubtypeId></Id>
       <AlphaMistingEnable>false</AlphaMistingEnable>
       <CanBeAffectedByOtherLights>false</CanBeAffectedByOtherLights>
       <IgnoreDepth>true</IgnoreDepth>
@@ -108,7 +108,7 @@
       <UseAtlas>false</UseAtlas>
     </TransparentMaterial>
     <TransparentMaterial>
-      <Id><TypeId>TransparentMaterialDefinition</TypeId><SubtypeId>ModSettings_slider_rail_right</SubtypeId></Id>
+      <Id><TypeId>TransparentMaterialDefinition</TypeId><SubtypeId>ModUI_slider_rail_right</SubtypeId></Id>
       <AlphaMistingEnable>false</AlphaMistingEnable>
       <CanBeAffectedByOtherLights>false</CanBeAffectedByOtherLights>
       <IgnoreDepth>true</IgnoreDepth>
@@ -116,7 +116,7 @@
       <UseAtlas>false</UseAtlas>
     </TransparentMaterial>
     <TransparentMaterial>
-      <Id><TypeId>TransparentMaterialDefinition</TypeId><SubtypeId>ModSettings_slider_thumb</SubtypeId></Id>
+      <Id><TypeId>TransparentMaterialDefinition</TypeId><SubtypeId>ModUI_slider_thumb</SubtypeId></Id>
       <AlphaMistingEnable>false</AlphaMistingEnable>
       <CanBeAffectedByOtherLights>false</CanBeAffectedByOtherLights>
       <IgnoreDepth>true</IgnoreDepth>
@@ -124,7 +124,7 @@
       <UseAtlas>false</UseAtlas>
     </TransparentMaterial>
     <TransparentMaterial>
-      <Id><TypeId>TransparentMaterialDefinition</TypeId><SubtypeId>ModSettings_slider_thumb_highlight</SubtypeId></Id>
+      <Id><TypeId>TransparentMaterialDefinition</TypeId><SubtypeId>ModUI_slider_thumb_highlight</SubtypeId></Id>
       <AlphaMistingEnable>false</AlphaMistingEnable>
       <CanBeAffectedByOtherLights>false</CanBeAffectedByOtherLights>
       <IgnoreDepth>true</IgnoreDepth>
@@ -132,7 +132,7 @@
       <UseAtlas>false</UseAtlas>
     </TransparentMaterial>
     <TransparentMaterial>
-      <Id><TypeId>TransparentMaterialDefinition</TypeId><SubtypeId>ModSettings_scrollbar_v_thumb_top</SubtypeId></Id>
+      <Id><TypeId>TransparentMaterialDefinition</TypeId><SubtypeId>ModUI_scrollbar_v_thumb_top</SubtypeId></Id>
       <AlphaMistingEnable>false</AlphaMistingEnable>
       <CanBeAffectedByOtherLights>false</CanBeAffectedByOtherLights>
       <IgnoreDepth>true</IgnoreDepth>
@@ -140,7 +140,7 @@
       <UseAtlas>false</UseAtlas>
     </TransparentMaterial>
     <TransparentMaterial>
-      <Id><TypeId>TransparentMaterialDefinition</TypeId><SubtypeId>ModSettings_scrollbar_v_thumb_center</SubtypeId></Id>
+      <Id><TypeId>TransparentMaterialDefinition</TypeId><SubtypeId>ModUI_scrollbar_v_thumb_center</SubtypeId></Id>
       <AlphaMistingEnable>false</AlphaMistingEnable>
       <CanBeAffectedByOtherLights>false</CanBeAffectedByOtherLights>
       <IgnoreDepth>true</IgnoreDepth>
@@ -148,7 +148,7 @@
       <UseAtlas>false</UseAtlas>
     </TransparentMaterial>
     <TransparentMaterial>
-      <Id><TypeId>TransparentMaterialDefinition</TypeId><SubtypeId>ModSettings_scrollbar_v_thumb_bottom</SubtypeId></Id>
+      <Id><TypeId>TransparentMaterialDefinition</TypeId><SubtypeId>ModUI_scrollbar_v_thumb_bottom</SubtypeId></Id>
       <AlphaMistingEnable>false</AlphaMistingEnable>
       <CanBeAffectedByOtherLights>false</CanBeAffectedByOtherLights>
       <IgnoreDepth>true</IgnoreDepth>
@@ -156,7 +156,7 @@
       <UseAtlas>false</UseAtlas>
     </TransparentMaterial>
     <TransparentMaterial>
-      <Id><TypeId>TransparentMaterialDefinition</TypeId><SubtypeId>ModSettings_scrollbar_v_thumb_top_highlight</SubtypeId></Id>
+      <Id><TypeId>TransparentMaterialDefinition</TypeId><SubtypeId>ModUI_scrollbar_v_thumb_top_highlight</SubtypeId></Id>
       <AlphaMistingEnable>false</AlphaMistingEnable>
       <CanBeAffectedByOtherLights>false</CanBeAffectedByOtherLights>
       <IgnoreDepth>true</IgnoreDepth>
@@ -164,7 +164,7 @@
       <UseAtlas>false</UseAtlas>
     </TransparentMaterial>
     <TransparentMaterial>
-      <Id><TypeId>TransparentMaterialDefinition</TypeId><SubtypeId>ModSettings_scrollbar_v_thumb_center_highlight</SubtypeId></Id>
+      <Id><TypeId>TransparentMaterialDefinition</TypeId><SubtypeId>ModUI_scrollbar_v_thumb_center_highlight</SubtypeId></Id>
       <AlphaMistingEnable>false</AlphaMistingEnable>
       <CanBeAffectedByOtherLights>false</CanBeAffectedByOtherLights>
       <IgnoreDepth>true</IgnoreDepth>
@@ -172,7 +172,7 @@
       <UseAtlas>false</UseAtlas>
     </TransparentMaterial>
     <TransparentMaterial>
-      <Id><TypeId>TransparentMaterialDefinition</TypeId><SubtypeId>ModSettings_scrollbar_v_thumb_bottom_highlight</SubtypeId></Id>
+      <Id><TypeId>TransparentMaterialDefinition</TypeId><SubtypeId>ModUI_scrollbar_v_thumb_bottom_highlight</SubtypeId></Id>
       <AlphaMistingEnable>false</AlphaMistingEnable>
       <CanBeAffectedByOtherLights>false</CanBeAffectedByOtherLights>
       <IgnoreDepth>true</IgnoreDepth>
@@ -180,7 +180,7 @@
       <UseAtlas>false</UseAtlas>
     </TransparentMaterial>
     <TransparentMaterial>
-      <Id><TypeId>TransparentMaterialDefinition</TypeId><SubtypeId>ModSettings_item_highlight_dark</SubtypeId></Id>
+      <Id><TypeId>TransparentMaterialDefinition</TypeId><SubtypeId>ModUI_item_highlight_dark</SubtypeId></Id>
       <AlphaMistingEnable>false</AlphaMistingEnable>
       <CanBeAffectedByOtherLights>false</CanBeAffectedByOtherLights>
       <IgnoreDepth>true</IgnoreDepth>
@@ -188,7 +188,7 @@
       <UseAtlas>false</UseAtlas>
     </TransparentMaterial>
     <TransparentMaterial>
-      <Id><TypeId>TransparentMaterialDefinition</TypeId><SubtypeId>ModSettings_item_active_dark</SubtypeId></Id>
+      <Id><TypeId>TransparentMaterialDefinition</TypeId><SubtypeId>ModUI_item_active_dark</SubtypeId></Id>
       <AlphaMistingEnable>false</AlphaMistingEnable>
       <CanBeAffectedByOtherLights>false</CanBeAffectedByOtherLights>
       <IgnoreDepth>true</IgnoreDepth>
@@ -196,7 +196,7 @@
       <UseAtlas>false</UseAtlas>
     </TransparentMaterial>
     <TransparentMaterial>
-      <Id><TypeId>TransparentMaterialDefinition</TypeId><SubtypeId>ModSettings_TooltipBackground</SubtypeId></Id>
+      <Id><TypeId>TransparentMaterialDefinition</TypeId><SubtypeId>ModUI_TooltipBackground</SubtypeId></Id>
       <AlphaMistingEnable>false</AlphaMistingEnable>
       <CanBeAffectedByOtherLights>false</CanBeAffectedByOtherLights>
       <IgnoreDepth>true</IgnoreDepth>
@@ -204,7 +204,7 @@
       <UseAtlas>false</UseAtlas>
     </TransparentMaterial>
     <TransparentMaterial>
-      <Id><TypeId>TransparentMaterialDefinition</TypeId><SubtypeId>ModSettings_Blank</SubtypeId></Id>
+      <Id><TypeId>TransparentMaterialDefinition</TypeId><SubtypeId>ModUI_Blank</SubtypeId></Id>
       <AlphaMistingEnable>false</AlphaMistingEnable>
       <CanBeAffectedByOtherLights>false</CanBeAffectedByOtherLights>
       <IgnoreDepth>true</IgnoreDepth>
@@ -212,7 +212,7 @@
       <UseAtlas>false</UseAtlas>
     </TransparentMaterial>
     <TransparentMaterial>
-      <Id><TypeId>TransparentMaterialDefinition</TypeId><SubtypeId>ModSettings_button_filter_system</SubtypeId></Id>
+      <Id><TypeId>TransparentMaterialDefinition</TypeId><SubtypeId>ModUI_button_filter_system</SubtypeId></Id>
       <AlphaMistingEnable>false</AlphaMistingEnable>
       <CanBeAffectedByOtherLights>false</CanBeAffectedByOtherLights>
       <IgnoreDepth>true</IgnoreDepth>
@@ -220,7 +220,7 @@
       <UseAtlas>false</UseAtlas>
     </TransparentMaterial>
     <TransparentMaterial>
-      <Id><TypeId>TransparentMaterialDefinition</TypeId><SubtypeId>ModSettings_button_filter_system_highlight</SubtypeId></Id>
+      <Id><TypeId>TransparentMaterialDefinition</TypeId><SubtypeId>ModUI_button_filter_system_highlight</SubtypeId></Id>
       <AlphaMistingEnable>false</AlphaMistingEnable>
       <CanBeAffectedByOtherLights>false</CanBeAffectedByOtherLights>
       <IgnoreDepth>true</IgnoreDepth>
@@ -228,7 +228,7 @@
       <UseAtlas>false</UseAtlas>
     </TransparentMaterial>
     <TransparentMaterial>
-      <Id><TypeId>TransparentMaterialDefinition</TypeId><SubtypeId>ModSettings_button_filter_system_active</SubtypeId></Id>
+      <Id><TypeId>TransparentMaterialDefinition</TypeId><SubtypeId>ModUI_button_filter_system_active</SubtypeId></Id>
       <AlphaMistingEnable>false</AlphaMistingEnable>
       <CanBeAffectedByOtherLights>false</CanBeAffectedByOtherLights>
       <IgnoreDepth>true</IgnoreDepth>
@@ -236,7 +236,7 @@
       <UseAtlas>false</UseAtlas>
     </TransparentMaterial>
     <TransparentMaterial>
-      <Id><TypeId>TransparentMaterialDefinition</TypeId><SubtypeId>ModSettings_textbox_left</SubtypeId></Id>
+      <Id><TypeId>TransparentMaterialDefinition</TypeId><SubtypeId>ModUI_textbox_left</SubtypeId></Id>
       <AlphaMistingEnable>false</AlphaMistingEnable>
       <CanBeAffectedByOtherLights>false</CanBeAffectedByOtherLights>
       <IgnoreDepth>true</IgnoreDepth>
@@ -244,7 +244,7 @@
       <UseAtlas>false</UseAtlas>
     </TransparentMaterial>
     <TransparentMaterial>
-      <Id><TypeId>TransparentMaterialDefinition</TypeId><SubtypeId>ModSettings_textbox_center</SubtypeId></Id>
+      <Id><TypeId>TransparentMaterialDefinition</TypeId><SubtypeId>ModUI_textbox_center</SubtypeId></Id>
       <AlphaMistingEnable>false</AlphaMistingEnable>
       <CanBeAffectedByOtherLights>false</CanBeAffectedByOtherLights>
       <IgnoreDepth>true</IgnoreDepth>
@@ -252,7 +252,7 @@
       <UseAtlas>false</UseAtlas>
     </TransparentMaterial>
     <TransparentMaterial>
-      <Id><TypeId>TransparentMaterialDefinition</TypeId><SubtypeId>ModSettings_textbox_right</SubtypeId></Id>
+      <Id><TypeId>TransparentMaterialDefinition</TypeId><SubtypeId>ModUI_textbox_right</SubtypeId></Id>
       <AlphaMistingEnable>false</AlphaMistingEnable>
       <CanBeAffectedByOtherLights>false</CanBeAffectedByOtherLights>
       <IgnoreDepth>true</IgnoreDepth>
@@ -260,7 +260,7 @@
       <UseAtlas>false</UseAtlas>
     </TransparentMaterial>
     <TransparentMaterial>
-      <Id><TypeId>TransparentMaterialDefinition</TypeId><SubtypeId>ModSettings_textbox_left_highlight</SubtypeId></Id>
+      <Id><TypeId>TransparentMaterialDefinition</TypeId><SubtypeId>ModUI_textbox_left_highlight</SubtypeId></Id>
       <AlphaMistingEnable>false</AlphaMistingEnable>
       <CanBeAffectedByOtherLights>false</CanBeAffectedByOtherLights>
       <IgnoreDepth>true</IgnoreDepth>
@@ -268,7 +268,7 @@
       <UseAtlas>false</UseAtlas>
     </TransparentMaterial>
     <TransparentMaterial>
-      <Id><TypeId>TransparentMaterialDefinition</TypeId><SubtypeId>ModSettings_textbox_center_highlight</SubtypeId></Id>
+      <Id><TypeId>TransparentMaterialDefinition</TypeId><SubtypeId>ModUI_textbox_center_highlight</SubtypeId></Id>
       <AlphaMistingEnable>false</AlphaMistingEnable>
       <CanBeAffectedByOtherLights>false</CanBeAffectedByOtherLights>
       <IgnoreDepth>true</IgnoreDepth>
@@ -276,7 +276,7 @@
       <UseAtlas>false</UseAtlas>
     </TransparentMaterial>
     <TransparentMaterial>
-      <Id><TypeId>TransparentMaterialDefinition</TypeId><SubtypeId>ModSettings_textbox_right_highlight</SubtypeId></Id>
+      <Id><TypeId>TransparentMaterialDefinition</TypeId><SubtypeId>ModUI_textbox_right_highlight</SubtypeId></Id>
       <AlphaMistingEnable>false</AlphaMistingEnable>
       <CanBeAffectedByOtherLights>false</CanBeAffectedByOtherLights>
       <IgnoreDepth>true</IgnoreDepth>
@@ -284,7 +284,7 @@
       <UseAtlas>false</UseAtlas>
     </TransparentMaterial>
     <TransparentMaterial>
-      <Id><TypeId>TransparentMaterialDefinition</TypeId><SubtypeId>ModSettings_textbox_left_focus</SubtypeId></Id>
+      <Id><TypeId>TransparentMaterialDefinition</TypeId><SubtypeId>ModUI_textbox_left_focus</SubtypeId></Id>
       <AlphaMistingEnable>false</AlphaMistingEnable>
       <CanBeAffectedByOtherLights>false</CanBeAffectedByOtherLights>
       <IgnoreDepth>true</IgnoreDepth>
@@ -292,7 +292,7 @@
       <UseAtlas>false</UseAtlas>
     </TransparentMaterial>
     <TransparentMaterial>
-      <Id><TypeId>TransparentMaterialDefinition</TypeId><SubtypeId>ModSettings_textbox_center_focus</SubtypeId></Id>
+      <Id><TypeId>TransparentMaterialDefinition</TypeId><SubtypeId>ModUI_textbox_center_focus</SubtypeId></Id>
       <AlphaMistingEnable>false</AlphaMistingEnable>
       <CanBeAffectedByOtherLights>false</CanBeAffectedByOtherLights>
       <IgnoreDepth>true</IgnoreDepth>
@@ -300,7 +300,7 @@
       <UseAtlas>false</UseAtlas>
     </TransparentMaterial>
     <TransparentMaterial>
-      <Id><TypeId>TransparentMaterialDefinition</TypeId><SubtypeId>ModSettings_textbox_right_focus</SubtypeId></Id>
+      <Id><TypeId>TransparentMaterialDefinition</TypeId><SubtypeId>ModUI_textbox_right_focus</SubtypeId></Id>
       <AlphaMistingEnable>false</AlphaMistingEnable>
       <CanBeAffectedByOtherLights>false</CanBeAffectedByOtherLights>
       <IgnoreDepth>true</IgnoreDepth>
@@ -308,7 +308,7 @@
       <UseAtlas>false</UseAtlas>
     </TransparentMaterial>
     <TransparentMaterial>
-      <Id><TypeId>TransparentMaterialDefinition</TypeId><SubtypeId>ModSettings_button_increase</SubtypeId></Id>
+      <Id><TypeId>TransparentMaterialDefinition</TypeId><SubtypeId>ModUI_button_increase</SubtypeId></Id>
       <AlphaMistingEnable>false</AlphaMistingEnable>
       <CanBeAffectedByOtherLights>false</CanBeAffectedByOtherLights>
       <IgnoreDepth>true</IgnoreDepth>
@@ -316,7 +316,7 @@
       <UseAtlas>false</UseAtlas>
     </TransparentMaterial>
     <TransparentMaterial>
-      <Id><TypeId>TransparentMaterialDefinition</TypeId><SubtypeId>ModSettings_button_increase_highlight</SubtypeId></Id>
+      <Id><TypeId>TransparentMaterialDefinition</TypeId><SubtypeId>ModUI_button_increase_highlight</SubtypeId></Id>
       <AlphaMistingEnable>false</AlphaMistingEnable>
       <CanBeAffectedByOtherLights>false</CanBeAffectedByOtherLights>
       <IgnoreDepth>true</IgnoreDepth>
@@ -324,7 +324,7 @@
       <UseAtlas>false</UseAtlas>
     </TransparentMaterial>
     <TransparentMaterial>
-      <Id><TypeId>TransparentMaterialDefinition</TypeId><SubtypeId>ModSettings_button_decrease</SubtypeId></Id>
+      <Id><TypeId>TransparentMaterialDefinition</TypeId><SubtypeId>ModUI_button_decrease</SubtypeId></Id>
       <AlphaMistingEnable>false</AlphaMistingEnable>
       <CanBeAffectedByOtherLights>false</CanBeAffectedByOtherLights>
       <IgnoreDepth>true</IgnoreDepth>
@@ -332,7 +332,7 @@
       <UseAtlas>false</UseAtlas>
     </TransparentMaterial>
     <TransparentMaterial>
-      <Id><TypeId>TransparentMaterialDefinition</TypeId><SubtypeId>ModSettings_button_decrease_highlight</SubtypeId></Id>
+      <Id><TypeId>TransparentMaterialDefinition</TypeId><SubtypeId>ModUI_button_decrease_highlight</SubtypeId></Id>
       <AlphaMistingEnable>false</AlphaMistingEnable>
       <CanBeAffectedByOtherLights>false</CanBeAffectedByOtherLights>
       <IgnoreDepth>true</IgnoreDepth>
@@ -340,7 +340,7 @@
       <UseAtlas>false</UseAtlas>
     </TransparentMaterial>
     <TransparentMaterial>
-      <Id><TypeId>TransparentMaterialDefinition</TypeId><SubtypeId>ModSettings_combobox_default_left</SubtypeId></Id>
+      <Id><TypeId>TransparentMaterialDefinition</TypeId><SubtypeId>ModUI_combobox_default_left</SubtypeId></Id>
       <AlphaMistingEnable>false</AlphaMistingEnable>
       <CanBeAffectedByOtherLights>false</CanBeAffectedByOtherLights>
       <IgnoreDepth>true</IgnoreDepth>
@@ -348,7 +348,7 @@
       <UseAtlas>false</UseAtlas>
     </TransparentMaterial>
     <TransparentMaterial>
-      <Id><TypeId>TransparentMaterialDefinition</TypeId><SubtypeId>ModSettings_combobox_default_center</SubtypeId></Id>
+      <Id><TypeId>TransparentMaterialDefinition</TypeId><SubtypeId>ModUI_combobox_default_center</SubtypeId></Id>
       <AlphaMistingEnable>false</AlphaMistingEnable>
       <CanBeAffectedByOtherLights>false</CanBeAffectedByOtherLights>
       <IgnoreDepth>true</IgnoreDepth>
@@ -356,7 +356,7 @@
       <UseAtlas>false</UseAtlas>
     </TransparentMaterial>
     <TransparentMaterial>
-      <Id><TypeId>TransparentMaterialDefinition</TypeId><SubtypeId>ModSettings_combobox_default_right</SubtypeId></Id>
+      <Id><TypeId>TransparentMaterialDefinition</TypeId><SubtypeId>ModUI_combobox_default_right</SubtypeId></Id>
       <AlphaMistingEnable>false</AlphaMistingEnable>
       <CanBeAffectedByOtherLights>false</CanBeAffectedByOtherLights>
       <IgnoreDepth>true</IgnoreDepth>
@@ -364,7 +364,7 @@
       <UseAtlas>false</UseAtlas>
     </TransparentMaterial>
     <TransparentMaterial>
-      <Id><TypeId>TransparentMaterialDefinition</TypeId><SubtypeId>ModSettings_combobox_default_highlight_left</SubtypeId></Id>
+      <Id><TypeId>TransparentMaterialDefinition</TypeId><SubtypeId>ModUI_combobox_default_highlight_left</SubtypeId></Id>
       <AlphaMistingEnable>false</AlphaMistingEnable>
       <CanBeAffectedByOtherLights>false</CanBeAffectedByOtherLights>
       <IgnoreDepth>true</IgnoreDepth>
@@ -372,7 +372,7 @@
       <UseAtlas>false</UseAtlas>
     </TransparentMaterial>
     <TransparentMaterial>
-      <Id><TypeId>TransparentMaterialDefinition</TypeId><SubtypeId>ModSettings_combobox_default_highlight_center</SubtypeId></Id>
+      <Id><TypeId>TransparentMaterialDefinition</TypeId><SubtypeId>ModUI_combobox_default_highlight_center</SubtypeId></Id>
       <AlphaMistingEnable>false</AlphaMistingEnable>
       <CanBeAffectedByOtherLights>false</CanBeAffectedByOtherLights>
       <IgnoreDepth>true</IgnoreDepth>
@@ -380,7 +380,7 @@
       <UseAtlas>false</UseAtlas>
     </TransparentMaterial>
     <TransparentMaterial>
-      <Id><TypeId>TransparentMaterialDefinition</TypeId><SubtypeId>ModSettings_combobox_default_highlight_right</SubtypeId></Id>
+      <Id><TypeId>TransparentMaterialDefinition</TypeId><SubtypeId>ModUI_combobox_default_highlight_right</SubtypeId></Id>
       <AlphaMistingEnable>false</AlphaMistingEnable>
       <CanBeAffectedByOtherLights>false</CanBeAffectedByOtherLights>
       <IgnoreDepth>true</IgnoreDepth>
@@ -388,7 +388,7 @@
       <UseAtlas>false</UseAtlas>
     </TransparentMaterial>
     <TransparentMaterial>
-      <Id><TypeId>TransparentMaterialDefinition</TypeId><SubtypeId>ModSettings_combobox_default_active_left</SubtypeId></Id>
+      <Id><TypeId>TransparentMaterialDefinition</TypeId><SubtypeId>ModUI_combobox_default_active_left</SubtypeId></Id>
       <AlphaMistingEnable>false</AlphaMistingEnable>
       <CanBeAffectedByOtherLights>false</CanBeAffectedByOtherLights>
       <IgnoreDepth>true</IgnoreDepth>
@@ -396,7 +396,7 @@
       <UseAtlas>false</UseAtlas>
     </TransparentMaterial>
     <TransparentMaterial>
-      <Id><TypeId>TransparentMaterialDefinition</TypeId><SubtypeId>ModSettings_combobox_default_active_center</SubtypeId></Id>
+      <Id><TypeId>TransparentMaterialDefinition</TypeId><SubtypeId>ModUI_combobox_default_active_center</SubtypeId></Id>
       <AlphaMistingEnable>false</AlphaMistingEnable>
       <CanBeAffectedByOtherLights>false</CanBeAffectedByOtherLights>
       <IgnoreDepth>true</IgnoreDepth>
@@ -404,7 +404,7 @@
       <UseAtlas>false</UseAtlas>
     </TransparentMaterial>
     <TransparentMaterial>
-      <Id><TypeId>TransparentMaterialDefinition</TypeId><SubtypeId>ModSettings_combobox_default_active_right</SubtypeId></Id>
+      <Id><TypeId>TransparentMaterialDefinition</TypeId><SubtypeId>ModUI_combobox_default_active_right</SubtypeId></Id>
       <AlphaMistingEnable>false</AlphaMistingEnable>
       <CanBeAffectedByOtherLights>false</CanBeAffectedByOtherLights>
       <IgnoreDepth>true</IgnoreDepth>
@@ -412,7 +412,7 @@
       <UseAtlas>false</UseAtlas>
     </TransparentMaterial>
     <TransparentMaterial>
-      <Id><TypeId>TransparentMaterialDefinition</TypeId><SubtypeId>ModSettings_button_close_symbol</SubtypeId></Id>
+      <Id><TypeId>TransparentMaterialDefinition</TypeId><SubtypeId>ModUI_button_close_symbol</SubtypeId></Id>
       <AlphaMistingEnable>false</AlphaMistingEnable>
       <CanBeAffectedByOtherLights>false</CanBeAffectedByOtherLights>
       <IgnoreDepth>true</IgnoreDepth>
@@ -420,7 +420,7 @@
       <UseAtlas>false</UseAtlas>
     </TransparentMaterial>
     <TransparentMaterial>
-      <Id><TypeId>TransparentMaterialDefinition</TypeId><SubtypeId>ModSettings_button_close_symbol_highlight</SubtypeId></Id>
+      <Id><TypeId>TransparentMaterialDefinition</TypeId><SubtypeId>ModUI_button_close_symbol_highlight</SubtypeId></Id>
       <AlphaMistingEnable>false</AlphaMistingEnable>
       <CanBeAffectedByOtherLights>false</CanBeAffectedByOtherLights>
       <IgnoreDepth>true</IgnoreDepth>

@@ -1,1 +1,2 @@
+## V0.9.1 - Renamed to Mod UI; input window for toolbar Set actions: numbers, choices, on/off and text in one window, toolbar label by template
 ## V0.8.6 - First public release: gear button in the Esc menu, settings windows with toggles, numbers, choices, text fields, hotkeys and buttons

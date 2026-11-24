@@ -2,8 +2,8 @@
   <!--
     Compile-check / IntelliSense project only. Space Engineers compiles Data/Scripts itself;
     this project just catches C# errors before launching the game (it does NOT check the mod whitelist).
-    Build:  dotnet build ModSettings.csproj
-    Outputs go to %TEMP%\ModSettingsModBuild so nothing extra lands in the mod folder.
+    Build:  dotnet build ModUI.csproj
+    Outputs go to %TEMP%\ModUIModBuild so nothing extra lands in the mod folder.
   -->
   <PropertyGroup>
     <TargetFramework>net481</TargetFramework>
@@ -13,7 +13,7 @@
     <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
-    <OutputPath>$(TEMP)\ModSettingsModBuild\bin\</OutputPath>
+    <OutputPath>$(TEMP)\ModUIModBuild\bin\</OutputPath>
     <NoWarn>$(NoWarn);CS0168;CS0169;CS0414;CS0649;CS0219</NoWarn>
     <SEBin64 Condition="'$(SEBin64)' == ''">F:\Games\SteamLibrary\steamapps\common\SpaceEngineers\Bin64</SEBin64>
   </PropertyGroup>

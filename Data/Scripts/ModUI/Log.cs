@@ -1,12 +1,12 @@
 using VRage.Utils;
 
-namespace ModSettings
+namespace Fd32.ModUI
 {
     public static class Log
     {
         public static void Write(string text)
         {
-            MyLog.Default.WriteLine("ModSettings| " + text);
+            MyLog.Default.WriteLine("ModUI| " + text);
         }
     }
 }

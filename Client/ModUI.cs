@@ -1,6 +1,8 @@
-// Mod Settings — клиентский файл (протокол 1). Скопируйте его в свой мод без изменений:
-// Data\Scripts\<ВашМод>\ModSettings.cs. Центр «Mod Settings» укажите у мода обязательной зависимостью Workshop.
-// Описание API — README центра: https://github.com/fd32-net/fd32-SE-Mod-Settings. Пример:
+// fd32: Mod UI — клиентский файл (протокол 1). Скопируйте его в свой мод без изменений:
+// Data\Scripts\<ВашМод>\ModUI.cs; в коде мода — using Fd32.ModUI;. Центр «fd32: Mod UI» укажите у мода обязательной
+// зависимостью Workshop. Описание API — README центра: https://github.com/fd32-net/fd32-SE-Mod-Settings.
+//
+// 1. Окно настроек (шестерёнка у «Настроек» в меню Esc):
 //
 //   Menu = new SettingsMenu("mymod", "My Mod", "1.0");
 //   Menu.Info("# My Mod\nЧто делает мод и как им пользоваться.");      // правая колонка окна
@@ -18,15 +20,34 @@
 //   Menu.Applied += () => Menu.SaveToLocalStorage();
 //   Menu.Register();                // в LoadData;  Menu.Dispose() — в UnloadData
 //
+// 2. Set-действие панели действий (тулбара) с окном ввода значений — в BeforeStart:
+//
+//   var a = ModUI.SetAction<IMyLightingBlock>("MyMod_SetLight", "Задать свет");      // id действия, имя в списке G
+//   var radius = a.Number("Радиус", 5).Range(0.5f, 10).Step(0.5f).Unit("м").Slider().Field().Buttons();
+//   var mode = a.Choice("Режим", "blink").Option("steady", "Ровно").Option("blink", "Мигать");
+//   var on = a.Toggle("Свет", true).Texts("Вкл", "Выкл");                       // булево — выпадающий список из двух
+//   var name = a.Text("Имя", "").MaxLength(20);
+//   a.Label("R{0} {2}");            // подпись слота: {N} — значение N по порядку; без шаблона — значения через пробел
+//   a.Enabled(b => ModUI.IsReady);  // без центра окна ввода нет — спрятать действие (решает мод)
+//   a.Check = v => v.Get(radius) > 8 && !v.Get(on) ? v.Error(radius, "Большой радиус — только со светом") : null;
+//   a.Run = (block, v) => { block.Radius = v.Get(radius); block.Enabled = v.Get(on); };
+//   a.Register();
+//
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Text;
 using Sandbox.ModAPI;
+using Sandbox.ModAPI.Interfaces.Terminal;
+using VRage;
+using VRage.Collections;
 using VRage.Input;
 using VRage.ModAPI;
 using VRage.Utils;
+using TerminalActionParameter = Sandbox.ModAPI.Ingame.TerminalActionParameter;
+using IUserCustomizableTerminalAction = Sandbox.ModAPI.Ingame.IUserCustomizableTerminalAction;
 
-namespace ModSettings
+namespace Fd32.ModUI
 {
     // Общее у меню, закладки и группы: элементы окна (порядок на экране = порядок вызовов).
     public abstract class SettingsContainer : Entry
@@ -263,6 +284,7 @@ namespace ModSettings
 
         // ---- сохранение (необязательно) ----
         // Все значения меню — в файл ModSettings_<id>.txt в локальном хранилище этого мода (Storage\<мод>), строки «ключ=значение».
+        // Имя файла — прежнее (до переименования в Mod UI), чтобы сохранённые настройки игроков не пропали.
 
         string StorageFile { get { return "ModSettings_" + Id + ".txt"; } }
 
@@ -272,7 +294,7 @@ namespace ModSettings
             {
                 using (var w = MyAPIGateway.Utilities.WriteFileInLocalStorage(StorageFile, typeof(SettingsMenu)))
                 {
-                    w.WriteLine("# " + Name + " " + Version + ": настройки (Mod Settings), строки ключ=значение");
+                    w.WriteLine("# " + Name + " " + Version + ": настройки (Mod UI), строки ключ=значение");
                     foreach (var e in Everything())
                     {
                         var s = e as Setting;
@@ -391,7 +413,7 @@ namespace ModSettings
 
         static void Log(string text)
         {
-            MyLog.Default.WriteLine("ModSettings client: " + text);
+            MyLog.Default.WriteLine("ModUI client: " + text);
         }
 
         Dictionary<string, string> GetValues()
@@ -511,7 +533,7 @@ namespace ModSettings
                         Closed(command == "closed:ok");
                 }
                 else if (command.StartsWith("refused:"))
-                    Log(Id + ": центр Mod Settings устарел (его протокол " + command.Substring(8) + ", нужен " + Protocol + ") — окна настроек не будет");
+                    Log(Id + ": центр Mod UI устарел (его протокол " + command.Substring(8) + ", нужен " + Protocol + ") — окна настроек не будет");
             }
             catch (Exception ex)
             {
@@ -657,6 +679,7 @@ namespace ModSettings
         internal abstract object Clean(object value);  // привести к правилам настройки (шаг, диапазон, варианты, длина)
         internal abstract string Format(object value); // значение -> строка протокола
         internal abstract void ResetToDefault();
+        internal abstract object DefaultBoxed { get; }
         internal override string EntryKey { get { return Key; } }
         internal string Write() { return Format(Boxed); }
     }
@@ -704,6 +727,7 @@ namespace ModSettings
         internal override void Commit(object v) { value = (T)v; }
         internal override object Clean(object v) { return Normalize((T)v); }
         internal override void ResetToDefault() { value = Default; }
+        internal override object DefaultBoxed { get { return Default; } }
 
         internal override void FireChanged()
         {
@@ -715,7 +739,18 @@ namespace ModSettings
     // Галочка.
     public class ToggleSetting : Setting<bool, ToggleSetting>
     {
+        internal string OnText, OffText;
+
         internal ToggleSetting(string key, string label, bool defaultValue) : base(key, label, defaultValue) { }
+
+        // Только для окна ввода Set-действия (там булево — выпадающий список): тексты вариантов «да» и «нет»,
+        // они же в подписи слота. Без вызова — «Вкл» / «Выкл» (On / Off) по языку игры.
+        public ToggleSetting Texts(string onText, string offText)
+        {
+            OnText = onText;
+            OffText = offText;
+            return this;
+        }
 
         internal override object[] Describe() { return new object[] { "toggle", Key, Label, Tip, Default }; }
         internal override string Format(object v) { return (bool)v ? "true" : "false"; }
@@ -1071,6 +1106,367 @@ namespace ModSettings
         {
             HotkeyValue v;
             return HotkeyValue.TryParse(text, out v) ? v : Value;
+        }
+    }
+
+    // ==================== Set-действия панели действий: окно ввода значений ====================
+
+    public static class ModUI
+    {
+        internal const long Channel = 3291573804L;
+        internal const int FormProtocol = 1;
+        static bool ready;
+        static long checkedAt;              // 0 — ещё не проверяли
+
+        // Центр с окном ввода есть и отвечает (проверка не чаще раза в секунду). Без центра окна ввода нет —
+        // мод сам решает, прятать ли действие: a.Enabled(b => ModUI.IsReady).
+        public static bool IsReady
+        {
+            get
+            {
+                long now = DateTime.UtcNow.Ticks;
+                if (checkedAt != 0 && now >= checkedAt && now - checkedAt < TimeSpan.TicksPerSecond)
+                    return ready;
+                checkedAt = now;
+                ready = false;
+                if (MyAPIGateway.Utilities != null && !MyAPIGateway.Utilities.IsDedicated)
+                {
+                    Action<int> reply = p => ready = p >= FormProtocol;
+                    MyAPIGateway.Utilities.SendModMessage(Channel, new object[] { "ModUI.Hello", reply });
+                }
+                return ready;
+            }
+        }
+
+        // Set-действие для блоков TBlock (например, IMyLightingBlock): id — постоянный id действия, name — имя в списке G
+        // и заголовок окна ввода. Значения — Number / Choice / Toggle / Text, потом Run и Register() (в BeforeStart).
+        public static SetAction<TBlock> SetAction<TBlock>(string id, string name) where TBlock : class
+        {
+            return new SetAction<TBlock>(id, name);
+        }
+
+        // Только окно ввода — для своего DoUserParameterRequestWithItem (form.Ask), без готового действия.
+        public static ValueForm Form(string caption)
+        {
+            return new ValueForm(caption);
+        }
+
+        internal static bool Ru
+        {
+            get
+            {
+                var s = MyAPIGateway.Session;
+                return s != null && s.Config != null && s.Config.Language == MyLanguagesEnum.Russian;
+            }
+        }
+
+        internal static void Log(string text)
+        {
+            MyLog.Default.WriteLine("ModUI client: " + text);
+        }
+    }
+
+    // Значения окна ввода по порядку объявления: число (float), выбор (ключ варианта), булево, строка.
+    // В слоте тулбара они хранятся так же, по порядку: новые значения добавлять только в конец.
+    public class ValueForm
+    {
+        public readonly string Caption;
+        internal readonly List<Setting> Values = new List<Setting>();
+        readonly Dictionary<Setting, int> index = new Dictionary<Setting, int>();
+        string template;
+        bool askLabel = true;
+
+        // Проверка на «ОК»: null — принято; текст — отказ (сообщение игроку, окно остаётся открытым).
+        // v.Error(значение, текст) ещё и подсветит подпись значения красным.
+        public Func<FormValues, string> Check;
+
+        internal ValueForm(string caption)
+        {
+            Caption = caption ?? "";
+        }
+
+        string NextKey { get { return Values.Count.ToString(CultureInfo.InvariantCulture); } }
+
+        T Add<T>(T s) where T : Setting
+        {
+            index[s] = Values.Count;
+            Values.Add(s);
+            return s;
+        }
+
+        // Число: Range, Step, Decimals, Unit; элементы — Slider / Field / Buttons в любой комбинации.
+        public NumberSetting Number(string label, float defaultValue) { return Add(new NumberSetting(NextKey, label, defaultValue)); }
+        // Выбор из вариантов (.Option(ключ, подпись)); в слоте хранится ключ.
+        public ChoiceSetting Choice(string label, string defaultKey) { return Add(new ChoiceSetting(NextKey, label, defaultKey)); }
+        // Булево: выпадающий список из двух вариантов, тексты — .Texts("Вкл", "Выкл").
+        public ToggleSetting Toggle(string label, bool defaultValue) { return Add(new ToggleSetting(NextKey, label, defaultValue)); }
+        // Строка: поле ввода (.MaxLength, .Placeholder).
+        public TextSetting Text(string label, string defaultValue = "") { return Add(new TextSetting(NextKey, label, defaultValue)); }
+
+        // Шаблон подписи слота: {0}, {1}… — значения по порядку (число — без единицы, выбор и булево — текстом варианта).
+        // Без шаблона — значения через пробел (число с единицей). Подпись не длиннее 9 символов (предел игры).
+        public ValueForm Label(string pattern)
+        {
+            template = pattern;
+            return this;
+        }
+
+        // false — поля подписи в окне нет, подпись ставится по шаблону сама.
+        public ValueForm AskLabel(bool ask)
+        {
+            askLabel = ask;
+            return this;
+        }
+
+        // Значения по умолчанию — в ParameterDefinitions действия (для своего действия; SetAction делает это сам).
+        public void AddParameterDefinitions(IMyTerminalAction action)
+        {
+            action.ParameterDefinitions.Clear();
+            foreach (var s in Values)
+            {
+                s.Prepare();
+                action.ParameterDefinitions.Add(TerminalActionParameter.Get(s.DefaultBoxed));
+            }
+        }
+
+        // Значения слота (из ActionWithParameters); недостающие и неподходящие — по умолчанию.
+        public FormValues Read(ListReader<TerminalActionParameter> args)
+        {
+            var v = new object[Values.Count];
+            for (int i = 0; i < v.Length; i++)
+            {
+                object x = null;
+                if (i < args.Count && !args[i].IsEmpty)
+                    x = Accept(Values[i], args[i].Value);
+                v[i] = x ?? Values[i].DefaultBoxed;
+            }
+            return new FormValues(this, v);
+        }
+
+        static object Accept(Setting s, object raw)
+        {
+            if (raw == null)
+                return null;
+            if (s is NumberSetting)
+            {
+                float f;
+                if (raw is float) f = (float)raw;
+                else if (raw is double) f = (float)(double)raw;
+                else if (raw is int) f = (int)raw;
+                else if (raw is long) f = (long)raw;
+                else return null;
+                return s.Clean(f);
+            }
+            if (s is ToggleSetting)
+                return raw is bool ? raw : null;
+            var str = raw as string;
+            if (str == null)
+                return null;
+            var choice = s as ChoiceSetting;
+            if (choice != null)
+                return choice.Keys.Contains(str) ? str : null;
+            return s.Clean(str);
+        }
+
+        internal int IndexOf(Setting s)
+        {
+            int i;
+            if (!index.TryGetValue(s, out i))
+                throw new ArgumentException("значение \"" + s.Label + "\" не из этого окна ввода");
+            return i;
+        }
+
+        // Окно ввода для слота тулбара: «ОК» — значения в item.Parameters, подпись на слот, done(true);
+        // «Отмена» / Esc — done(false), действие в слот не кладётся. Без центра — сразу done(false).
+        public void Ask(IUserCustomizableTerminalAction item, Action<bool> done)
+        {
+            Show((v, label) =>
+            {
+                var raw = v.Raw;
+                for (int i = 0; i < raw.Length; i++)
+                {
+                    var p = TerminalActionParameter.Get(raw[i]);
+                    if (i < item.Parameters.Count)
+                        item.Parameters[i] = p;
+                    else
+                        item.Parameters.Add(p);
+                }
+                item.SetCustomIconTitle(label ?? "");
+                done(true);
+            }, () => done(false));
+        }
+
+        internal void Show(Action<FormValues, string> ok, Action cancel)
+        {
+            if (!ModUI.IsReady)
+            {
+                ModUI.Log(Caption + ": центра Mod UI нет — окна ввода не будет");
+                cancel();
+                return;
+            }
+            var desc = new object[Values.Count];
+            for (int i = 0; i < desc.Length; i++)
+            {
+                var s = Values[i];
+                s.Prepare();
+                var t = s as ToggleSetting;
+                desc[i] = t == null ? s.Describe() : new object[] { "choice", t.Key, t.Label, t.Tip, t.Default ? "true" : "false",
+                    new[] { "true", "false" }, new[] { t.OnText ?? (ModUI.Ru ? "Вкл" : "On"), t.OffText ?? (ModUI.Ru ? "Выкл" : "Off") } };
+            }
+            Func<Dictionary<string, string>, string[]> check = d =>
+            {
+                if (Check == null)
+                    return null;
+                try
+                {
+                    var v = Parse(d);
+                    string error = Check(v);
+                    return error == null ? null : new[] { error, v.ErrorKey };
+                }
+                catch (Exception e)
+                {
+                    ModUI.Log(Caption + ": ошибка в Check: " + e);
+                    throw;
+                }
+            };
+            Action<Dictionary<string, string>, string> answer = (d, label) =>
+            {
+                try
+                {
+                    ok(Parse(d), label);
+                }
+                catch (Exception e)
+                {
+                    ModUI.Log(Caption + ": ошибка в ответе окна ввода: " + e);
+                }
+            };
+            Action cancelled = () =>
+            {
+                try
+                {
+                    cancel();
+                }
+                catch (Exception e)
+                {
+                    ModUI.Log(Caption + ": ошибка при отмене окна ввода: " + e);
+                }
+            };
+            MyAPIGateway.Utilities.SendModMessage(ModUI.Channel, new object[]
+                { "ModUI.Ask", ModUI.FormProtocol, Caption, Caption, desc, template, askLabel, check, answer, cancelled });
+        }
+
+        FormValues Parse(Dictionary<string, string> d)
+        {
+            var v = new object[Values.Count];
+            for (int i = 0; i < v.Length; i++)
+            {
+                var s = Values[i];
+                string text;
+                v[i] = d != null && d.TryGetValue(s.Key, out text) ? s.Clean(s.Read(text)) : s.DefaultBoxed;
+            }
+            return new FormValues(this, v);
+        }
+    }
+
+    // Значения окна или слота: v.Get(значение).
+    public class FormValues
+    {
+        readonly ValueForm form;
+        readonly object[] values;
+        internal string ErrorKey;
+
+        internal FormValues(ValueForm form, object[] values)
+        {
+            this.form = form;
+            this.values = values;
+        }
+
+        internal object[] Raw { get { return values; } }
+
+        public float Get(NumberSetting s) { return (float)values[form.IndexOf(s)]; }
+        public string Get(ChoiceSetting s) { return (string)values[form.IndexOf(s)]; }
+        public bool Get(ToggleSetting s) { return (bool)values[form.IndexOf(s)]; }
+        public string Get(TextSetting s) { return (string)values[form.IndexOf(s)]; }
+
+        // Для Check: отказ с текстом, подпись значения s — красная.
+        public string Error(Setting s, string text)
+        {
+            ErrorKey = s.Key;
+            return text;
+        }
+    }
+
+    // Готовое Set-действие: значения (как у ValueForm), значок, Enabled, Run; Register() — добавить действие блокам TBlock.
+    public class SetAction<TBlock> : ValueForm where TBlock : class
+    {
+        public readonly string Id;
+        string icon = @"Textures\GUI\Icons\Actions\SetValue.dds";
+        Func<IMyTerminalBlock, bool> enabled;
+        IMyTerminalAction action;
+
+        // Нажатие слота (или вызов действия таймером, контроллером событий…): блок и значения этого слота.
+        public Action<TBlock, FormValues> Run;
+
+        internal SetAction(string id, string name) : base(name)
+        {
+            Id = id;
+        }
+
+        // Значок в тулбаре (путь к .dds); по умолчанию ванильный SetValue.
+        public SetAction<TBlock> Icon(string path)
+        {
+            icon = path;
+            return this;
+        }
+
+        // Есть ли действие у блока в списке G (например, b => ModUI.IsReady). По умолчанию — всегда.
+        public SetAction<TBlock> Enabled(Func<IMyTerminalBlock, bool> isEnabled)
+        {
+            enabled = isEnabled;
+            return this;
+        }
+
+        public new SetAction<TBlock> Label(string pattern)
+        {
+            base.Label(pattern);
+            return this;
+        }
+
+        public new SetAction<TBlock> AskLabel(bool ask)
+        {
+            base.AskLabel(ask);
+            return this;
+        }
+
+        // Созданное действие (после Register) — если мод хочет настроить его сам.
+        public IMyTerminalAction TerminalAction { get { return action; } }
+
+        public void Register()
+        {
+            if (action != null)
+                return;
+            var a = MyAPIGateway.TerminalControls.CreateAction<TBlock>(Id);
+            a.Name = new StringBuilder(Caption);
+            a.Icon = icon;
+            AddParameterDefinitions(a);
+            a.ActionWithParameters = (b, args) =>
+            {
+                if (Run == null)
+                    return;
+                try
+                {
+                    Run(b as TBlock, Read(args));
+                }
+                catch (Exception e)
+                {
+                    ModUI.Log(Id + ": ошибка в Run: " + e);
+                }
+            };
+            a.DoUserParameterRequestWithItem = (item, done) => Ask(item, done);
+            if (enabled != null)
+                a.Enabled = enabled;
+            MyAPIGateway.TerminalControls.AddAction<TBlock>(a);
+            action = a;
         }
     }
 }

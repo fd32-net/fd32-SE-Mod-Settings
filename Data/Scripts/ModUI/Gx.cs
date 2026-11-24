@@ -4,7 +4,7 @@ using Sandbox.ModAPI;
 using VRage.Utils;
 using VRageMath;
 
-namespace ModSettings
+namespace Fd32.ModUI
 {
     // Press-and-drag in progress: Move gets the cursor every frame while the button is held, End gets it on release
     // (moved = the cursor went further than a few pixels; a release without moving is a click).
@@ -24,12 +24,12 @@ namespace ModSettings
     {
         public static readonly MyStringId White = MyStringId.GetOrCompute("SquareSimple");
         // Vanilla look (see notes/se-vanilla-gui-style.md): text in the "Blue" font (220,244,252), "White" on hover;
-        // controls drawn with the game's own GUI textures (Data/TransparentMaterials_ModSettings.sbc).
+        // controls drawn with the game's own GUI textures (Data/TransparentMaterials_ModUI.sbc).
         public const string Font = "Blue";
         public const string FontHover = "White";
         public const float TextScale = 0.8f, TipScale = 0.7f;
 
-        static MyStringId Tex(string name) { return MyStringId.GetOrCompute("ModSettings_" + name); }
+        static MyStringId Tex(string name) { return MyStringId.GetOrCompute("ModUI_" + name); }
         public static readonly MyStringId TexButton = Tex("button_default"), TexButtonHover = Tex("button_default_highlight"),
             TexButtonActive = Tex("button_default_active"), TexStripe = Tex("button_stripe_left"),
             TexStripeHover = Tex("button_stripe_left_highlight"), TexChecked = Tex("checkbox_checked"),
@@ -384,8 +384,9 @@ namespace ModSettings
         public void SliderBar(RectangleF r, float t, bool hover)
         {
             float capW = SliderCap(r);
+            // середина — первой и на 1 px под края: игра округляет X и ширину куска по отдельности, встык бывает щель в 1 px
+            Sprite(TexRailC, new RectangleF(r.X + capW - Px.X, r.Y, r.Width - 2 * capW + 2 * Px.X, r.Height), Color.White);
             Sprite(TexRailL, new RectangleF(r.X, r.Y, capW, r.Height), Color.White);
-            Sprite(TexRailC, new RectangleF(r.X + capW, r.Y, r.Width - 2 * capW, r.Height), Color.White);
             Sprite(TexRailR, new RectangleF(r.X + r.Width - capW, r.Y, capW, r.Height), Color.White);
             float th = r.Height * 32f / 55f, tw = th * Px.X / Px.Y;
             float cx = SliderX(r, t);
@@ -397,8 +398,8 @@ namespace ModSettings
         {
             var t = hover ? TexScrollHover : TexScroll;
             float cap = Math.Min(r.Height / 2f, r.Width * Px.Y / Px.X);
+            Sprite(t[1], new RectangleF(r.X, r.Y + cap - Px.Y, r.Width, r.Height - 2 * cap + 2 * Px.Y), Color.White);   // под края (щель 1 px)
             Sprite(t[0], new RectangleF(r.X, r.Y, r.Width, cap), Color.White);
-            Sprite(t[1], new RectangleF(r.X, r.Y + cap, r.Width, r.Height - 2 * cap), Color.White);
             Sprite(t[2], new RectangleF(r.X, r.Y + r.Height - cap, r.Width, cap), Color.White);
         }
 
@@ -508,8 +509,8 @@ namespace ModSettings
         {
             var t = hover ? TexBoxHover : focus ? TexBoxFocus : TexBox;
             float cap = Math.Min(r.Width / 3f, r.Height * 8f / 48f * Px.X / Px.Y);
+            Sprite(t[1], new RectangleF(r.X + cap - Px.X, r.Y, r.Width - 2 * cap + 2 * Px.X, r.Height), Color.White);   // под края (щель 1 px)
             Sprite(t[0], new RectangleF(r.X, r.Y, cap, r.Height), Color.White);
-            Sprite(t[1], new RectangleF(r.X + cap, r.Y, r.Width - 2 * cap, r.Height), Color.White);
             Sprite(t[2], new RectangleF(r.X + r.Width - cap, r.Y, cap, r.Height), Color.White);
             var inner = new RectangleF(r.X + BoxPad, r.Y, r.Width - 2 * BoxPad, r.Height);
             text = text ?? "";
@@ -574,8 +575,8 @@ namespace ModSettings
             var t = open ? TexComboActive : hover ? TexComboHover : TexCombo;
             float k = r.Height / 48f * Px.X / Px.Y;          // ширина одного пикселя текстуры
             float l = Math.Min(r.Width / 4f, 20f * k), rw = Math.Min(r.Width / 2f, 51f * k);
+            Sprite(t[1], new RectangleF(r.X + l - Px.X, r.Y, r.Width - l - rw + 2 * Px.X, r.Height), Color.White);   // под края (щель 1 px)
             Sprite(t[0], new RectangleF(r.X, r.Y, l, r.Height), Color.White);
-            Sprite(t[1], new RectangleF(r.X + l, r.Y, r.Width - l - rw, r.Height), Color.White);
             Sprite(t[2], new RectangleF(r.X + r.Width - rw, r.Y, rw, r.Height), Color.White);
             Text(Fit(text, ComboScale, r.Width - 0.01f - rw), r.X + 0.01f, r.Y + r.Height / 2f, ComboScale, TextColor, LeftCenter,
                  float.PositiveInfinity, hover || open ? FontHover : Font);

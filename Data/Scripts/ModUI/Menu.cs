@@ -6,9 +6,9 @@ using VRage;
 using VRage.Input;
 using VRage.ModAPI;
 
-namespace ModSettings
+namespace Fd32.ModUI
 {
-    // Элемент меню мода, как его описал клиентский файл ModSettings.cs (протокол 1, см. DESIGN.md раздел 6).
+    // Элемент меню мода, как его описал клиентский файл ModUI.cs (протокол 1, см. DESIGN.md раздел 6).
     // Описание приходит массивом object[]: { вид, ... }; неизвестные виды пропускаются (клиент новее центра).
     public class Item
     {
