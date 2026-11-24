@@ -427,5 +427,45 @@
       <Texture>Textures\GUI\Controls\button_close_symbol_highlight.dds</Texture>
       <UseAtlas>false</UseAtlas>
     </TransparentMaterial>
+    <TransparentMaterial>
+      <Id><TypeId>TransparentMaterialDefinition</TypeId><SubtypeId>ModUI_hue_slider_rail_left</SubtypeId></Id>
+      <AlphaMistingEnable>false</AlphaMistingEnable>
+      <CanBeAffectedByOtherLights>false</CanBeAffectedByOtherLights>
+      <IgnoreDepth>true</IgnoreDepth>
+      <Texture>Textures\GUI\Controls\hue_slider_rail_left.dds</Texture>
+      <UseAtlas>false</UseAtlas>
+    </TransparentMaterial>
+    <TransparentMaterial>
+      <Id><TypeId>TransparentMaterialDefinition</TypeId><SubtypeId>ModUI_hue_slider_rail_center</SubtypeId></Id>
+      <AlphaMistingEnable>false</AlphaMistingEnable>
+      <CanBeAffectedByOtherLights>false</CanBeAffectedByOtherLights>
+      <IgnoreDepth>true</IgnoreDepth>
+      <Texture>Textures\GUI\Controls\hue_slider_rail_center.dds</Texture>
+      <UseAtlas>false</UseAtlas>
+    </TransparentMaterial>
+    <TransparentMaterial>
+      <Id><TypeId>TransparentMaterialDefinition</TypeId><SubtypeId>ModUI_hue_slider_rail_right</SubtypeId></Id>
+      <AlphaMistingEnable>false</AlphaMistingEnable>
+      <CanBeAffectedByOtherLights>false</CanBeAffectedByOtherLights>
+      <IgnoreDepth>true</IgnoreDepth>
+      <Texture>Textures\GUI\Controls\hue_slider_rail_right.dds</Texture>
+      <UseAtlas>false</UseAtlas>
+    </TransparentMaterial>
+    <TransparentMaterial>
+      <Id><TypeId>TransparentMaterialDefinition</TypeId><SubtypeId>ModUI_hue_slider_thumb</SubtypeId></Id>
+      <AlphaMistingEnable>false</AlphaMistingEnable>
+      <CanBeAffectedByOtherLights>false</CanBeAffectedByOtherLights>
+      <IgnoreDepth>true</IgnoreDepth>
+      <Texture>Textures\GUI\Controls\hue_slider_thumb.dds</Texture>
+      <UseAtlas>false</UseAtlas>
+    </TransparentMaterial>
+    <TransparentMaterial>
+      <Id><TypeId>TransparentMaterialDefinition</TypeId><SubtypeId>ModUI_hue_slider_thumb_highlight</SubtypeId></Id>
+      <AlphaMistingEnable>false</AlphaMistingEnable>
+      <CanBeAffectedByOtherLights>false</CanBeAffectedByOtherLights>
+      <IgnoreDepth>true</IgnoreDepth>
+      <Texture>Textures\GUI\Controls\hue_slider_thumb_highlight.dds</Texture>
+      <UseAtlas>false</UseAtlas>
+    </TransparentMaterial>
   </TransparentMaterials>
 </Definitions>

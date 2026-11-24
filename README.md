@@ -9,10 +9,12 @@
 - **Values for toolbar actions.** Your mod adds *Set* actions with values (number, choice, on/off, text). When the player puts
   one on a toolbar, Mod UI asks for the values and the slot label in one window. Your mod can also open this window itself,
   for example from a terminal button. See [Input window and toolbar Set actions](#input-window-and-toolbar-set-actions).
+- **Your own windows.** Your mod describes a whole window: the same controls, multi-line text and pictures, and its own
+  buttons at the bottom. See [Your own windows](#your-own-windows).
 
 [Русская версия](README.ru.md)
 
-> **Status:** V0.9.3, published on the Steam Workshop: [fd32: Mod UI](https://steamcommunity.com/sharedfiles/filedetails/?id=3842864536) (ID `3842864536`). The settings API has been checked in-game; toolbar Set actions are new in V0.9.
+> **Status:** V0.10.0, published on the Steam Workshop: [fd32: Mod UI](https://steamcommunity.com/sharedfiles/filedetails/?id=3842864536) (ID `3842864536`). The settings API has been checked in-game; toolbar Set actions are new in V0.9, your own windows in V0.10.
 
 - No chat commands, no config files to explain to players: everything happens in a familiar game window.
 - Vanilla look and feel: checkboxes, sliders, text fields, combo boxes and key bindings look and behave like the
@@ -37,6 +39,7 @@
     - [Number](#number)
     - [Choice](#choice)
     - [Text](#text)
+    - [Color](#color)
     - [Hotkey](#hotkey)
     - [Label, Separator, Button](#label-separator-button)
     - [Common to all settings](#common-to-all-settings)
@@ -53,6 +56,12 @@
   - [Toolbar Set actions](#toolbar-set-actions)
   - [Your own action](#your-own-action)
   - [Window without a toolbar](#window-without-a-toolbar)
+- [Your own windows](#your-own-windows)
+  - [Layout](#layout)
+  - [Values are live](#values-are-live)
+  - [Multi-line text and pictures](#multi-line-text-and-pictures)
+  - [Buttons at the bottom](#buttons-at-the-bottom)
+  - [ModWindow members](#modwindow-members)
 - [Without the hub, load order](#without-the-hub-load-order)
 - [Upgrading from Mod Settings](#upgrading-from-mod-settings)
 - [Rules and limitations](#rules-and-limitations)
@@ -257,6 +266,7 @@ Fine-tuning uses chained calls: `.Range(0, 100).Step(5).Unit("m/s")`.
 | `Choice(key, label, defaultKey)` | `string` (option key) | vanilla combo box |
 | `Text(key, label, default = "")` | `string` | vanilla text field |
 | `Hotkey(key, label, MyKeys, MyKeyboardModifiers = None)` | `HotkeyValue` | key binding row, like the vanilla Controls screen |
+| `Color(key, label, default)` | `Color` (VRageMath) | swatch and Hex field; H, S, V sliders on click |
 
 #### Toggle
 
@@ -322,6 +332,21 @@ ShipName = Menu.Text("name", "Ship name", "Wanderer")
 - **Enter** confirms the input and keeps the window open.
 - **Ctrl+V is not available**: the mod whitelist does not allow reading the clipboard.
 - An empty or otherwise invalid value is refused in [`Applying`](#applying-validate-and-refuse).
+
+#### Color
+
+```csharp
+Glow = Menu.Color("glow", "Glow color", new Color(255, 128, 0));          // using VRageMath;
+Tint = Menu.Color("tint", "HUD tint", new Color(80, 160, 255, 128)).Alpha();
+```
+
+- The row shows a color swatch and a **Hex** field. Click the swatch to show the **H** (hue), **S** and **V** sliders,
+  as in the vanilla crosshair color picker (Options → Game); click again to hide them.
+- `.Alpha()` adds the **Transparency** slider, and Hex gets 8 digits: `#RRGGBBAA`. Without it the color is opaque (A = 255)
+  and Hex is `#RRGGBB`.
+- Hex accepts the value with or without `#`; Enter or clicking elsewhere confirms it, and a wrong value is reverted.
+- Saving and the protocol use the string `"#RRGGBBAA"`.
+- Needs Mod UI V0.9.4 or newer (the Workshop item updates by itself). An older hub just does not show the row.
 
 #### Hotkey
 
@@ -614,6 +639,7 @@ tab.Button("Route editor...", () => new RouteEditor().Open());
 ```
 
 A mod window (`MyModScreen`) opens over the hub's window. **Esc** returns to the settings.
+With Mod UI V0.10 a button can also open a vanilla-style window described with the same controls — see [Your own windows](#your-own-windows).
 
 ---
 
@@ -686,12 +712,13 @@ public class MyActions : MySessionComponentBase
 | `Choice(label, defaultKey)` + `.Option(key, label)` | `string` (option key) | combo box |
 | `Toggle(label, default)` + `.Texts(on, off)` | `bool` | combo box with two options; without `Texts` — On / Off (Вкл / Выкл in Russian) |
 | `Text(label, default = "")` + `.MaxLength`, `.Placeholder` | `string` | text field |
+| `Color(label, default)` + `.Alpha()` | `Color` | swatch, Hex field and H, S, V sliders (always shown here); stored in the slot as `"#RRGGBBAA"` |
 
 Values have no keys: they are identified by **their order**. `.Tooltip(text)` works as in settings.
 
 **The toolbar label**
 - `Label(template)`: `{0}`, `{1}`… are the values in order (`string.Format`). A number is shown with its decimals but **without** the unit;
-  a choice or on/off shows the option text.
+  a choice or on/off shows the option text, a color shows `#RRGGBB`.
 - Without a template the label is the values separated by spaces (a number with its unit).
 - **9 characters at most**: the game cuts longer labels. The field accepts 9 characters, and a template that gives more is cut,
   with a line in the hub's log.
@@ -747,6 +774,85 @@ form.Open(v => Rename(block, v.Get(name)));
 
 ---
 
+## Your own windows
+
+A mod can open a whole window of its own (from a terminal button, a hotkey, a settings button…): the same vanilla controls
+as in settings, plus multi-line text and pictures, with the buttons at the bottom that the mod describes.
+Needs Mod UI V0.10.0 or newer.
+
+```csharp
+var w = ModUI.Window("Rename ship");                     // narrow, one column; .Wide() — like the settings window
+w.TextBlock("# Rename\nThe new name is used by all copies.");
+var name  = w.Text("Ship name", "Wanderer").MaxLength(32);
+var count = w.Number("Copies", 1).Range(1, 10).Step(1).Field().Buttons();
+var note  = w.Label("");
+w.Editing += s => note.Text = count.Value > 5 ? "This takes a while." : "";   // values are live
+w.Footer("Rename", () =>
+{
+    if (name.Value.Trim().Length == 0) { w.ShowMessage("The name cannot be empty."); return false; }
+    Rename(name.Value, count.IntValue);
+    return true;                                         // true — close the window
+}).Default();                                            // Enter
+w.Footer("Cancel").Cancel();                             // Esc and ×
+w.Open();
+```
+
+### Layout
+
+- **Narrow** (default): one column, like the input window; the height follows the content (up to 0.9 of the screen, then it scrolls).
+  Tabs, if any, are shown one under another as groups.
+- **Wide** (`.Wide()`): like the settings window. Tabs (`w.Tab(title)`) are listed on the left when there is more than one,
+  `w.Info(text | Func<string>)` fills the right column.
+- Groups (`Group(title).Collapsible()`), `Label`, `Separator` and `Button` work as in settings.
+
+### Values are live
+
+- The controls are the same as in settings (`Toggle`, `Number`, `Choice`, `Text`, `Hotkey`, `Color`), but without keys:
+  `w.Number("Speed", 20)`.
+- **`.Value` changes at once** when the player changes something, and the setting's `Changed` fires at once too.
+  Then `w.Editing` is called with that setting: decide here what is `Enabled` and `Visible`.
+- **`x.Value = …` from your mod** is shown by the window within a fraction of a second. So are new labels
+  (`setting.Label`, `button.Label`, `label.Text`, `group.Title`, `textBlock.Text`).
+- There is no draft: Cancel does not roll anything back. If you need that, keep the old values yourself.
+
+### Multi-line text and pictures
+
+| Method | What it shows |
+|---|---|
+| `TextBlock(text)`, `TextBlock(() => text)` | Read-only text at full width, wrapped; a line `# …` is a heading, as in `Info`. No scroll bar of its own: the window scrolls. A `Func` is read again twice a second. |
+| `Image(material)` + `.Width(fraction)`, `.Aspect(w / h)`, `.Tooltip` | A picture at full width (or a part of it, centred); the height follows the texture's proportions. |
+
+`material` is the name of a texture the game knows: a `TransparentMaterial` from your mod's SBC (that is how a mod's own
+`.dds` gets a name, see [`Data/TransparentMaterials_ModUI.sbc`](Data/TransparentMaterials_ModUI.sbc)), an LCD texture
+(`"Construction"`, `"Online_wide"`…) or a generated texture (`tex.MaterialId.String`). A plain file path does not work:
+the game draws screen sprites only by material name. A missing material is shown hatched, with a line in the hub's log.
+
+### Buttons at the bottom
+
+| Member | Description |
+|---|---|
+| `w.Footer(label, () => …)` | A button. Return `true` to close the window. Without a handler the button just closes it. |
+| `.Default()` | Enter (outside a text field) presses it. |
+| `.Cancel()` | Esc and × press it; the window closes only if it returns `true`. Without a Cancel button Esc and × just close the window. |
+| `.Left()` | Put it on the left (like Defaults in settings). The others go on the right; in a narrow window without left buttons they are centred. |
+| `.Tooltip(text)`, `.Label`, `.Enabled`, `.Visible` | As for other controls. |
+
+### ModWindow members
+
+| Member | Description |
+|---|---|
+| `ModUI.Window(caption)` | Creates the window description (nothing is shown yet). Keep it in a field and open it again later. |
+| `Open()` | Shows the window. `false` if the hub is missing or older than V0.10.0 (a line in the log). |
+| `Close()`, `IsOpen` | Close the window from your code. |
+| `Rebuild()` | You added or removed controls, or changed `Caption`: the window is rebuilt, the tab and scrolling are kept. |
+| `Opened`, `Editing`, `Closed` | Events: opened; the player changed a value; closed (by any button, Esc, × or `Close()`). |
+| `ShowMessage`, `ShowConfirm` | A message or a Yes / No question over the window. |
+
+A window can open another one on top (for example, from a `Button`); Esc returns to the window below.
+The game allows at most 4 mod windows open at once.
+
+---
+
 ## Without the hub, load order
 
 - **Load order does not matter.** If the hub loads before your mod, it accepts `Register()` at once. If it loads
@@ -789,6 +895,8 @@ Look at the game log: `%AppData%\SpaceEngineers\SpaceEngineers_*.log`.
 | `ModUI client: <id>: центр Mod UI устарел…` | The hub is older than your client file ("hub is outdated"). |
 | `ModUI client: <caption>: центра Mod UI нет — окна ввода не будет` | A Set action was placed, but the hub is missing ("no hub, no input window"). |
 | `ModUI| окно ввода: …`, `ModUI| … длиннее 9 символов — обрезана` | The hub refused an input window, or a label template gives more than 9 characters ("cut"). |
+| `ModUI client: <caption>: центр Mod UI старый (нужен V0.10)` | `w.Open()` of your own window, but the hub is older than V0.10 ("hub is old"). |
+| `ModUI| картинка окна …: материала "…" нет` | An `Image` names a material the game does not know ("no such material"). |
 | `ModUI client: <id>: ошибка в …` | Your event handler threw an exception (full stack trace follows). |
 | `MOD_ERROR` / `is prohibited` | The game refused to compile a mod (whitelist). |
 
@@ -804,7 +912,7 @@ Look at the game log: `%AppData%\SpaceEngineers\SpaceEngineers_*.log`.
 | Path | Contents |
 |---|---|
 | `Client/ModUI.cs` | **The client file** that mod authors copy. The reference copy: the game does not compile it from here. |
-| `Data/Scripts/ModUI/` | The hub: the gear in the Esc menu (`HubSession.cs`, `Menu.cs`), the window (`SettingsWindow.cs`), the toolbar input window (`Forms.cs`), the GUI helper (`Gx.cs`), hub strings (`Loc.cs`). |
+| `Data/Scripts/ModUI/` | The hub: the gear in the Esc menu (`HubSession.cs`, `Menu.cs`), the window (`SettingsWindow.cs`), the toolbar input window (`Forms.cs`), mod windows (`Windows.cs`), the GUI helper (`Gx.cs`), hub strings (`Loc.cs`). |
 | `Data/TransparentMaterials_ModUI.sbc` | Materials over vanilla GUI textures. |
 | `ModUI.csproj` | Compile check only: `dotnet build ModUI.csproj` (set `SEBin64` to your `SpaceEngineers\Bin64`). It does not check the whitelist; only the game does. |
 | `TESTS.md` | In-game test plans (in Russian). |

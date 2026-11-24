@@ -12,6 +12,7 @@
 //   Units = hud.Choice("units", "Единицы", "ms").Option("ms", "м/с").Option("kmh", "км/ч");   // выпадающий список
 //   ShipName = hud.Text("name", "Имя", "").MaxLength(32).Placeholder("Введите имя...");      // поле ввода
 //   Link = hud.Hotkey("link", "Связать", MyKeys.R, MyKeyboardModifiers.Control);   // в игре: if (Link.IsNewPressed()) ...
+//   Glow = hud.Color("glow", "Цвет подсветки", new Color(255, 128, 0));            // .Alpha() — с прозрачностью
 //   Menu.Editing += e => ShipName.Enabled = e.New(Hints);              // игрок что-то поменял (ещё до «ОК»): мод сам решает,
 //                                                                      // что доступно (Enabled), что видно (Visible), e.Set(...) — поменять другие
 //   Menu.Applying += e => { if (e.New(Speed) > 50 && e.New(Hints)) e.Cancel("Так нельзя", Speed); };
@@ -27,11 +28,22 @@
 //   var mode = a.Choice("Режим", "blink").Option("steady", "Ровно").Option("blink", "Мигать");
 //   var on = a.Toggle("Свет", true).Texts("Вкл", "Выкл");                       // булево — выпадающий список из двух
 //   var name = a.Text("Имя", "").MaxLength(20);
+//   var tint = a.Color("Цвет", Color.White);                                    // в слоте — строка "#RRGGBBAA"
 //   a.Label("R{0} {2}");            // подпись слота: {N} — значение N по порядку; без шаблона — значения через пробел
 //   a.Enabled(b => ModUI.IsReady);  // без центра окна ввода нет — спрятать действие (решает мод)
 //   a.Check = v => v.Get(radius) > 8 && !v.Get(on) ? v.Error(radius, "Большой радиус — только со светом") : null;
 //   a.Run = (block, v) => { block.Radius = v.Get(radius); block.Enabled = v.Get(on); };
 //   a.Register();
+//
+// 3. Своё окно мода (центр V0.10+): контролы как в настройках, значения живые, кнопки внизу — свои:
+//
+//   var w = ModUI.Window("Переименовать");               // .Wide() — как окно настроек (закладки, Info)
+//   w.TextBlock("# Имя\nНовое имя получат все копии.");  // многострочный текст; w.Image("Материал") — картинка
+//   var name = w.Text("Имя", "Странник").MaxLength(32);
+//   w.Editing += s => { };                               // игрок поменял значение: s.Value уже новое
+//   w.Footer("ОК", () => { Rename(name.Value); return true; }).Default();   // true — закрыть окно
+//   w.Footer("Отмена").Cancel();                         // Esc и ×
+//   w.Open();                                            // w.Close(), w.Rebuild(), w.IsOpen
 //
 using System;
 using System.Collections.Generic;
@@ -44,6 +56,7 @@ using VRage.Collections;
 using VRage.Input;
 using VRage.ModAPI;
 using VRage.Utils;
+using VRageMath;
 using TerminalActionParameter = Sandbox.ModAPI.Ingame.TerminalActionParameter;
 using IUserCustomizableTerminalAction = Sandbox.ModAPI.Ingame.IUserCustomizableTerminalAction;
 
@@ -81,6 +94,12 @@ namespace Fd32.ModUI
         public TextSetting Text(string key, string label, string defaultValue = "")
         {
             return Add(new TextSetting(key, label, defaultValue));
+        }
+
+        // Цвет: образец и поле Hex; щелчок по образцу раскрывает ползунки H, S, V (с .Alpha() — и прозрачность).
+        public ColorSetting Color(string key, string label, Color defaultValue)
+        {
+            return Add(new ColorSetting(key, label, defaultValue));
         }
 
         // Пояснительный текст во всю ширину колонки.
@@ -460,7 +479,7 @@ namespace Fd32.ModUI
         }
 
         // Окно: черновик и ключ изменённого ("" — открытие, "*" — несколько сразу, null — просто опрос).
-        // Ответ: { новые значения черновика или null, недоступные ключи, скрытые ключи }.
+        // Ответ: { новые значения черновика или null, недоступные ключи, скрытые ключи, подписи (ключ -> текст) }.
         object[] Edit(Dictionary<string, string> draft, string changed)
         {
             Dictionary<string, string> values = null;
@@ -489,6 +508,7 @@ namespace Fd32.ModUI
             }
             var off = new List<string>();
             var hidden = new List<string>();
+            var labels = new Dictionary<string, string>();
             foreach (var entry in Everything())
             {
                 string key = entry.EntryKey;
@@ -498,8 +518,11 @@ namespace Fd32.ModUI
                     off.Add(key);
                 if (!entry.Visible)
                     hidden.Add(key);
+                string label = entry.LiveText;
+                if (label != null)
+                    labels[key] = label;
             }
-            return new object[] { values, off.ToArray(), hidden.ToArray() };
+            return new object[] { values, off.ToArray(), hidden.ToArray(), labels };
         }
 
         void Command(string command)
@@ -552,6 +575,7 @@ namespace Fd32.ModUI
         public string New(ChoiceSetting s) { return (string)Get(s); }
         public string New(TextSetting s) { return (string)Get(s); }
         public HotkeyValue New(HotkeySetting s) { return (HotkeyValue)Get(s); }
+        public Color New(ColorSetting s) { return (Color)Get(s); }
 
         // В окне значение отличается от действующего (.Value).
         public bool IsChanged(Setting s) { return !s.Same(Get(s)); }
@@ -588,6 +612,7 @@ namespace Fd32.ModUI
         public void Set(ChoiceSetting s, string value) { Put(s, value); }
         public void Set(TextSetting s, string value) { Put(s, value); }
         public void Set(HotkeySetting s, HotkeyValue value) { Put(s, value); }
+        public void Set(ColorSetting s, Color value) { Put(s, value); }
 
         void Put(Setting s, object value)
         {
@@ -624,6 +649,8 @@ namespace Fd32.ModUI
 
         internal abstract string EntryKey { get; }
         internal abstract object[] Describe();
+        // Текст, который мод может поменять при открытом окне (подпись, заголовок группы, текст); null — нечего.
+        internal virtual string LiveText { get { return null; } }
     }
 
     class StaticEntry : Entry
@@ -637,7 +664,8 @@ namespace Fd32.ModUI
 
     public class ButtonItem : Entry
     {
-        public readonly string Key, Label;
+        public readonly string Key;
+        public string Label { get; set; }
         internal readonly Action Action;
         string tip;
 
@@ -656,12 +684,15 @@ namespace Fd32.ModUI
 
         internal override string EntryKey { get { return Key; } }
         internal override object[] Describe() { return new object[] { "button", Key, Label, tip }; }
+        internal override string LiveText { get { return Label; } }
     }
 
     // Общее у всех настроек.
     public abstract class Setting : Entry
     {
-        public readonly string Key, Label;
+        public readonly string Key;
+        // Подпись; поменять можно и при открытом окне.
+        public string Label { get; set; }
         internal string Tip;
 
         protected Setting(string key, string label)
@@ -682,6 +713,9 @@ namespace Fd32.ModUI
         internal abstract object DefaultBoxed { get; }
         internal override string EntryKey { get { return Key; } }
         internal string Write() { return Format(Boxed); }
+        // Значение для слота тулбара (TerminalActionParameter принимает только простые типы).
+        internal virtual object ToSlot(object value) { return value; }
+        internal override string LiveText { get { return Label; } }
     }
 
     public abstract class Setting<T, TSelf> : Setting where TSelf : Setting<T, TSelf>
@@ -942,6 +976,69 @@ namespace Fd32.ModUI
         internal override string Format(object v) { return (string)v; }
         internal override object Read(string text) { return Normalize(text); }
     }
+
+    // Цвет: образец и поле Hex (#RRGGBB, с .Alpha() — #RRGGBBAA); щелчок по образцу раскрывает ползунки H, S, V
+    // и прозрачность — как ванильный выбор цвета прицела в «Параметрах». В файле и протоколе — строка "#RRGGBBAA".
+    public class ColorSetting : Setting<Color, ColorSetting>
+    {
+        bool alpha;
+
+        internal ColorSetting(string key, string label, Color defaultValue) : base(key, label, defaultValue)
+        {
+            Renormalize();
+        }
+
+        // С прозрачностью: ползунок «Прозрачность» и Hex из 8 знаков. Без вызова прозрачности нет (A = 255).
+        public ColorSetting Alpha()
+        {
+            alpha = true;
+            Renormalize();
+            return this;
+        }
+
+        protected override Color Normalize(Color v)
+        {
+            if (!alpha)
+                v.A = 255;
+            return v;
+        }
+
+        internal override object[] Describe() { return new object[] { "color", Key, Label, Tip, Hex(Default), alpha }; }
+        internal override string Format(object v) { return Hex((Color)v); }
+        internal override object ToSlot(object v) { return Hex((Color)v); }
+
+        internal override object Read(string text)
+        {
+            Color c;
+            return TryParse(text, out c) ? Normalize(c) : Value;
+        }
+
+        // "#RRGGBBAA".
+        internal static string Hex(Color c)
+        {
+            return "#" + c.R.ToString("X2") + c.G.ToString("X2") + c.B.ToString("X2") + c.A.ToString("X2");
+        }
+
+        // "#RRGGBB" или "#RRGGBBAA" (решётка необязательна).
+        internal static bool TryParse(string s, out Color c)
+        {
+            c = new Color(255, 255, 255);
+            if (s == null)
+                return false;
+            s = s.Trim();
+            if (s.StartsWith("#"))
+                s = s.Substring(1);
+            if (s.Length != 6 && s.Length != 8)
+                return false;
+            uint u;
+            if (!uint.TryParse(s, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out u))
+                return false;
+            if (s.Length == 6)
+                u = (u << 8) | 0xFF;
+            c = new Color((int)(u >> 24), (int)((u >> 16) & 0xFF), (int)((u >> 8) & 0xFF), (int)(u & 0xFF));
+            return true;
+        }
+    }
     // Значение горячей клавиши: клавиша + Ctrl / Shift / Alt. Key = MyKeys.None — клавиши нет.
     public struct HotkeyValue : IEquatable<HotkeyValue>
     {
@@ -1116,7 +1213,11 @@ namespace Fd32.ModUI
         internal const long Channel = 3291573804L;
         internal const int FormProtocol = 1;
         static bool ready;
+        static int hubProtocol;
         static long checkedAt;              // 0 — ещё не проверяли
+
+        // Протокол окон центра из последнего ответа (1 — только окно ввода, 2 — и общее окно ModUI.Window).
+        internal static int HubProtocol { get { return hubProtocol; } }
 
         // Центр с окном ввода есть и отвечает (проверка не чаще раза в секунду). Без центра окна ввода нет —
         // мод сам решает, прятать ли действие: a.Enabled(b => ModUI.IsReady). На выделенном сервере — всегда true:
@@ -1135,7 +1236,11 @@ namespace Fd32.ModUI
                 ready = false;
                 if (MyAPIGateway.Utilities != null && !MyAPIGateway.Utilities.IsDedicated)
                 {
-                    Action<int> reply = p => ready = p >= FormProtocol;
+                    Action<int> reply = p =>
+                    {
+                        hubProtocol = p;
+                        ready = p >= FormProtocol;
+                    };
                     MyAPIGateway.Utilities.SendModMessage(Channel, new object[] { "ModUI.Hello", reply });
                 }
                 return ready;
@@ -1147,6 +1252,12 @@ namespace Fd32.ModUI
         public static SetAction<TBlock> SetAction<TBlock>(string id, string name) where TBlock : class
         {
             return new SetAction<TBlock>(id, name);
+        }
+
+        // Своё окно мода: контролы как в настройках (значения живые), свои кнопки внизу; открыть — w.Open().
+        public static ModWindow Window(string caption)
+        {
+            return new ModWindow(caption);
         }
 
         // Только окно ввода — для своего DoUserParameterRequestWithItem (form.Ask), без готового действия.
@@ -1170,7 +1281,7 @@ namespace Fd32.ModUI
         }
     }
 
-    // Значения окна ввода по порядку объявления: число (float), выбор (ключ варианта), булево, строка.
+    // Значения окна ввода по порядку объявления: число (float), выбор (ключ варианта), булево, строка, цвет (строка "#RRGGBBAA").
     // В слоте тулбара они хранятся так же, по порядку: новые значения добавлять только в конец.
     public class ValueForm
     {
@@ -1206,6 +1317,8 @@ namespace Fd32.ModUI
         public ToggleSetting Toggle(string label, bool defaultValue) { return Add(new ToggleSetting(NextKey, label, defaultValue)); }
         // Строка: поле ввода (.MaxLength, .Placeholder).
         public TextSetting Text(string label, string defaultValue = "") { return Add(new TextSetting(NextKey, label, defaultValue)); }
+        // Цвет (.Alpha() — с прозрачностью); в слоте хранится строкой "#RRGGBBAA", в подписи — "#RRGGBB".
+        public ColorSetting Color(string label, VRageMath.Color defaultValue) { return Add(new ColorSetting(NextKey, label, defaultValue)); }
 
         // Шаблон подписи слота: {0}, {1}… — значения по порядку (число — без единицы, выбор и булево — текстом варианта).
         // Без шаблона — значения через пробел (число с единицей). Подпись не длиннее 9 символов (предел игры).
@@ -1229,7 +1342,7 @@ namespace Fd32.ModUI
             foreach (var s in Values)
             {
                 s.Prepare();
-                action.ParameterDefinitions.Add(TerminalActionParameter.Get(s.DefaultBoxed));
+                action.ParameterDefinitions.Add(TerminalActionParameter.Get(s.ToSlot(s.DefaultBoxed)));
             }
         }
 
@@ -1266,6 +1379,11 @@ namespace Fd32.ModUI
             var str = raw as string;
             if (str == null)
                 return null;
+            if (s is ColorSetting)
+            {
+                VRageMath.Color c;
+                return ColorSetting.TryParse(str, out c) ? s.Clean(c) : null;
+            }
             var choice = s as ChoiceSetting;
             if (choice != null)
                 return choice.Keys.Contains(str) ? str : null;
@@ -1289,7 +1407,7 @@ namespace Fd32.ModUI
                 var raw = v.Raw;
                 for (int i = 0; i < raw.Length; i++)
                 {
-                    var p = TerminalActionParameter.Get(raw[i]);
+                    var p = TerminalActionParameter.Get(Values[i].ToSlot(raw[i]));
                     if (i < item.Parameters.Count)
                         item.Parameters[i] = p;
                     else
@@ -1407,6 +1525,7 @@ namespace Fd32.ModUI
         public string Get(ChoiceSetting s) { return (string)values[form.IndexOf(s)]; }
         public bool Get(ToggleSetting s) { return (bool)values[form.IndexOf(s)]; }
         public string Get(TextSetting s) { return (string)values[form.IndexOf(s)]; }
+        public VRageMath.Color Get(ColorSetting s) { return (VRageMath.Color)values[form.IndexOf(s)]; }
 
         // Для Check: отказ с текстом, подпись значения s — красная.
         public string Error(Setting s, string text)
@@ -1487,6 +1606,497 @@ namespace Fd32.ModUI
                 a.Enabled = enabled;
             MyAPIGateway.TerminalControls.AddAction<TBlock>(a);
             action = a;
+        }
+    }
+
+    // ==================== Общее окно мода (ModUI.Window) ====================
+
+    // Общее у окна, его закладок и групп: контролы по порядку вызовов. Ключи окно раздаёт само, по порядку.
+    // Значения живые: .Value меняется сразу, как игрок что-то поменял (и Changed у настройки срабатывает сразу);
+    // x.Value = … из мода окно показывает через долю секунды.
+    public abstract class WindowContainer : Entry
+    {
+        internal readonly List<Entry> Entries = new List<Entry>();
+        internal ModWindow Win;
+
+        public ToggleSetting Toggle(string label, bool defaultValue) { return Add(new ToggleSetting(Win.NewKey("v"), label, defaultValue)); }
+        public NumberSetting Number(string label, float defaultValue) { return Add(new NumberSetting(Win.NewKey("v"), label, defaultValue)); }
+        public ChoiceSetting Choice(string label, string defaultKey) { return Add(new ChoiceSetting(Win.NewKey("v"), label, defaultKey)); }
+        public TextSetting Text(string label, string defaultValue = "") { return Add(new TextSetting(Win.NewKey("v"), label, defaultValue)); }
+        public ColorSetting Color(string label, VRageMath.Color defaultValue) { return Add(new ColorSetting(Win.NewKey("v"), label, defaultValue)); }
+
+        public HotkeySetting Hotkey(string label, MyKeys defaultKey, MyKeyboardModifiers modifiers = MyKeyboardModifiers.None)
+        {
+            return Add(new HotkeySetting(Win.NewKey("v"), label, new HotkeyValue(defaultKey, modifiers)));
+        }
+
+        // Пояснение серым во всю ширину (текст можно менять: label.Text = …).
+        public LabelItem Label(string text) { return Add(new LabelItem(Win.NewKey("l"), text)); }
+
+        public Entry Separator()
+        {
+            string key = Win.NewKey("s");
+            return Add(new StaticEntry(key, new object[] { "separator", key }));
+        }
+
+        // Кнопка внутри окна: срабатывает сразу.
+        public ButtonItem Button(string label, Action action) { return Add(new ButtonItem(Win.NewKey("b"), label, action)); }
+
+        // Многострочный текст (только чтение) во всю ширину; строка "# ..." — заголовок, как в Info. Своей прокрутки нет —
+        // прокручивается окно. Func — текст берётся заново пару раз в секунду.
+        public TextBlockItem TextBlock(string text) { return Add(new TextBlockItem(Win.NewKey("t"), text, null)); }
+        public TextBlockItem TextBlock(Func<string> text) { return Add(new TextBlockItem(Win.NewKey("t"), null, text)); }
+
+        // Картинка во всю ширину колонки, высота — по пропорциям текстуры. material — имя TransparentMaterial из SBC
+        // (свой .dds мода описывается там, как в Data\TransparentMaterials_ModUI.sbc центра), LCD-текстуры («SquareSimple»…)
+        // или генерируемой текстуры (tex.MaterialId.String).
+        public ImageItem Image(string material) { return Add(new ImageItem(Win.NewKey("i"), material)); }
+
+        // Группа: заголовок раздела; .Collapsible() — сворачивается щелчком.
+        public WindowGroup Group(string title) { return Add(new WindowGroup(Win, title)); }
+
+        internal T Add<T>(T e) where T : Entry
+        {
+            Entries.Add(e);
+            return e;
+        }
+
+        internal object[] DescribeEntries()
+        {
+            var a = new object[Entries.Count];
+            for (int i = 0; i < Entries.Count; i++)
+                a[i] = Entries[i].Describe();
+            return a;
+        }
+
+        internal IEnumerable<Entry> All()
+        {
+            foreach (var e in Entries)
+            {
+                yield return e;
+                var c = e as WindowContainer;
+                if (c != null)
+                    foreach (var x in c.All())
+                        yield return x;
+            }
+        }
+    }
+
+    public class WindowGroup : WindowContainer
+    {
+        readonly string key;
+        bool collapsible, collapsed;
+
+        public string Title { get; set; }
+
+        internal WindowGroup(ModWindow win, string title)
+        {
+            Win = win;
+            Title = title ?? "";
+            key = win.NewKey("g");
+        }
+
+        public WindowGroup Collapsible(bool startCollapsed = false)
+        {
+            collapsible = true;
+            collapsed = startCollapsed;
+            return this;
+        }
+
+        internal override string EntryKey { get { return key; } }
+        internal override object[] Describe() { return new object[] { "group", Title, collapsible, collapsed, DescribeEntries(), key }; }
+        internal override string LiveText { get { return Title; } }
+    }
+
+    // Закладка широкого окна (Wide): строка в списке слева, её контролы — посередине, её Info — справа.
+    // В узком окне закладки показываются группами одна под другой.
+    public class WindowTab : WindowContainer
+    {
+        public readonly string Title;
+        object info;
+
+        internal WindowTab(ModWindow win, string title)
+        {
+            Win = win;
+            Title = title ?? "";
+        }
+
+        public WindowTab Info(string text) { info = text; return this; }
+        public WindowTab Info(Func<string> text) { info = text; return this; }
+
+        internal override string EntryKey { get { return null; } }
+        internal override object[] Describe() { return new object[] { "tab", Title, info, DescribeEntries() }; }
+    }
+
+    public class LabelItem : Entry
+    {
+        readonly string key;
+        public string Text { get; set; }
+
+        internal LabelItem(string key, string text)
+        {
+            this.key = key;
+            Text = text ?? "";
+        }
+
+        internal override string EntryKey { get { return key; } }
+        internal override object[] Describe() { return new object[] { "label", Text, key }; }
+        internal override string LiveText { get { return Text; } }
+    }
+
+    public class TextBlockItem : Entry
+    {
+        readonly string key;
+        internal readonly Func<string> Source;
+        // Текст блока (если он задан строкой); можно менять, когда угодно.
+        public string Text { get; set; }
+
+        internal TextBlockItem(string key, string text, Func<string> source)
+        {
+            this.key = key;
+            Text = text ?? "";
+            Source = source;
+        }
+
+        internal override string EntryKey { get { return key; } }
+        internal override object[] Describe() { return new object[] { "textblock", key, Source != null ? (object)Source : Text }; }
+        internal override string LiveText { get { return Source != null ? null : Text; } }
+    }
+
+    public class ImageItem : Entry
+    {
+        readonly string key, material;
+        float width = 1f, aspect;
+        string tip;
+
+        internal ImageItem(string key, string material)
+        {
+            this.key = key;
+            this.material = material ?? "";
+        }
+
+        // Ширина — доля ширины колонки (0..1), картинка по центру. По умолчанию — во всю ширину.
+        public ImageItem Width(float fraction)
+        {
+            width = Math.Max(0.05f, Math.Min(1f, fraction));
+            return this;
+        }
+
+        // Пропорции ширина / высота, если не как у текстуры (например, 16f / 9).
+        public ImageItem Aspect(float widthToHeight)
+        {
+            aspect = Math.Max(0.01f, widthToHeight);
+            return this;
+        }
+
+        public ImageItem Tooltip(string text)
+        {
+            tip = text;
+            return this;
+        }
+
+        internal override string EntryKey { get { return key; } }
+        internal override object[] Describe() { return new object[] { "image", key, material, aspect, width, tip }; }
+    }
+
+    // Кнопка внизу окна. Обработчик возвращает true — закрыть окно; без обработчика кнопка просто закрывает окно.
+    public class FooterButton : Entry
+    {
+        internal readonly string Key;
+        internal readonly Func<bool> Click;
+        internal bool IsLeft, IsDefault, IsCancel;
+        string tip;
+
+        public string Label { get; set; }
+
+        internal FooterButton(string key, string label, Func<bool> click)
+        {
+            Key = key;
+            Label = label ?? "";
+            Click = click;
+        }
+
+        // Слева внизу (как «По умолчанию» в настройках); остальные — справа.
+        public FooterButton Left() { IsLeft = true; return this; }
+        // Enter (вне поля ввода) нажимает эту кнопку.
+        public FooterButton Default() { IsDefault = true; return this; }
+        // Esc и крестик нажимают эту кнопку (окно закроется, только если она вернёт true).
+        public FooterButton Cancel() { IsCancel = true; return this; }
+
+        public FooterButton Tooltip(string text)
+        {
+            tip = text;
+            return this;
+        }
+
+        internal override string EntryKey { get { return Key; } }
+        internal override object[] Describe() { return new object[] { "footer", Key, Label, tip, IsLeft, IsDefault, IsCancel }; }
+        internal override string LiveText { get { return Label; } }
+    }
+
+    // Окно мода целиком: заголовок, раскладка, контролы, нижние кнопки; открывает мод сам (по кнопке терминала, клавише…).
+    //   var w = ModUI.Window("Маршрут").Wide();                 // по умолчанию узкое, одна колонка
+    //   var speed = w.Number("Скорость", 20).Range(0, 100);
+    //   w.Footer("ОК", () => { Apply(); return true; }).Default();
+    //   w.Footer("Отмена").Cancel();
+    //   w.Open();
+    public class ModWindow : WindowContainer
+    {
+        internal const int Protocol = 2;            // окно есть в центре с протоколом окна ввода 2 (Mod UI V0.10)
+
+        bool wide, open, rebuild, close;
+        object info;
+        int keyCount;
+        readonly List<WindowTab> tabs = new List<WindowTab>();
+        readonly List<FooterButton> footer = new List<FooterButton>();
+
+        // Заголовок окна; поменять при открытом окне — после Rebuild().
+        public string Caption { get; set; }
+
+        // Окно открыто (центр его показывает).
+        public bool IsOpen { get { return open; } }
+
+        // Окно открылось.
+        public event Action Opened;
+        // Игрок поменял значение: s.Value уже новое. Здесь мод решает, что доступно (Enabled) и видно (Visible).
+        public event Action<Setting> Editing;
+        // Окно закрылось (кнопкой, Esc, крестиком, Close()).
+        public event Action Closed;
+
+        internal ModWindow(string caption)
+        {
+            Win = this;
+            Caption = caption ?? "";
+        }
+
+        internal string NewKey(string prefix) { return "#" + prefix + (keyCount++); }
+
+        // Широкое окно — как окно настроек: закладки слева (если их больше одной), Info справа. Без вызова — узкое,
+        // одна колонка, как окно ввода; высота — по содержимому.
+        public ModWindow Wide()
+        {
+            wide = true;
+            return this;
+        }
+
+        // Текст правой колонки (только у Wide). Строка "# ..." — заголовок.
+        public ModWindow Info(string text) { info = text; return this; }
+        public ModWindow Info(Func<string> text) { info = text; return this; }
+
+        public WindowTab Tab(string title)
+        {
+            var t = new WindowTab(this, title);
+            tabs.Add(t);
+            return t;
+        }
+
+        // Кнопка внизу окна; click возвращает true — закрыть окно. Без click кнопка просто закрывает окно.
+        public FooterButton Footer(string label, Func<bool> click = null)
+        {
+            var b = new FooterButton(NewKey("f"), label, click);
+            footer.Add(b);
+            return b;
+        }
+
+        // Показать окно. false — центра Mod UI нет или он старый (строка в логе).
+        public bool Open()
+        {
+            if (open)
+                return true;
+            if (MyAPIGateway.Utilities == null || MyAPIGateway.Utilities.IsDedicated || !ModUI.IsReady || ModUI.HubProtocol < Protocol)
+            {
+                ModUI.Log(Caption + ": " + (ModUI.IsReady ? "центр Mod UI старый (нужен V0.10)" : "центра Mod UI нет") + " — окна не будет");
+                return false;
+            }
+            open = true;
+            rebuild = close = false;
+            Func<object[]> describe = DescribeWindow;
+            Func<Dictionary<string, string>> values = Values;
+            Func<Dictionary<string, string>, string, object[]> edit = Edit;
+            Func<string, bool> command = Command;
+            MyAPIGateway.Utilities.SendModMessage(ModUI.Channel, new object[] { "ModUI.Window", Protocol, Caption, describe, values, edit, command });
+            return true;
+        }
+
+        // Закрыть окно (центр закроет его через долю секунды; Closed — после этого).
+        public void Close()
+        {
+            if (open)
+                close = true;
+        }
+
+        // Перестроить открытое окно: добавили / убрали контролы, поменяли Caption. Прокрутка и закладка сохраняются.
+        public void Rebuild()
+        {
+            if (open)
+                rebuild = true;
+        }
+
+        // Сообщение игроку поверх окна (кнопка «ОК»).
+        public void ShowMessage(string text, string caption = null)
+        {
+            Show(text, caption ?? Caption, null);
+        }
+
+        // Вопрос игроку: «Да» / «Нет» (Esc = «Нет»); answer(true) — «Да».
+        public void ShowConfirm(string text, Action<bool> answer, string caption = null)
+        {
+            Show(text, caption, answer ?? (yes => { }));
+        }
+
+        void Show(string text, string caption, Action<bool> answer)
+        {
+            if (!ModUI.IsReady || MyAPIGateway.Utilities.IsDedicated)
+            {
+                ModUI.Log(Caption + ": центра нет, сообщение не показано: " + text);
+                return;
+            }
+            MyAPIGateway.Utilities.SendModMessage(ModUI.Channel, new object[] { "ModSettings.Show", Caption, caption, text, answer });
+        }
+
+        IEnumerable<Entry> Everything()
+        {
+            foreach (var e in All())
+                yield return e;
+            foreach (var t in tabs)
+                foreach (var e in t.All())
+                    yield return e;
+            foreach (var b in footer)
+                yield return b;
+        }
+
+        internal override string EntryKey { get { return null; } }
+        internal override object[] Describe() { return null; }
+
+        // { заголовок, широкое, info, закладки object[], нижние кнопки object[] }
+        object[] DescribeWindow()
+        {
+            try
+            {
+                foreach (var e in Everything())
+                {
+                    var s = e as Setting;
+                    if (s != null)
+                        s.Prepare();
+                }
+                var t = new List<object>();
+                if (Entries.Count > 0 || tabs.Count == 0)
+                    t.Add(new object[] { "tab", null, null, DescribeEntries() });
+                foreach (var tab in tabs)
+                    t.Add(tab.Describe());
+                var f = new object[footer.Count];
+                for (int i = 0; i < f.Length; i++)
+                    f[i] = footer[i].Describe();
+                return new object[] { Caption, wide, info, t.ToArray(), f };
+            }
+            catch (Exception ex)
+            {
+                ModUI.Log(Caption + ": ошибка в описании окна: " + ex);
+                throw;
+            }
+        }
+
+        Dictionary<string, string> Values()
+        {
+            var d = new Dictionary<string, string>();
+            foreach (var e in Everything())
+            {
+                var s = e as Setting;
+                if (s != null)
+                    d[s.Key] = s.Write();
+            }
+            return d;
+        }
+
+        // Центр: значение changed поменял игрок ("" — окно открылось, null — опрос). Ответ:
+        // { null, недоступные ключи, скрытые ключи, подписи (ключ -> текст), 0 / 1 перестроить / 2 закрыть }.
+        object[] Edit(Dictionary<string, string> values, string changed)
+        {
+            try
+            {
+                if (changed == "" && Opened != null)
+                    Opened();
+                if (!string.IsNullOrEmpty(changed))
+                {
+                    string text;
+                    foreach (var e in Everything())
+                    {
+                        var s = e as Setting;
+                        if (s == null || s.Key != changed || values == null || !values.TryGetValue(changed, out text))
+                            continue;
+                        object v = s.Clean(s.Read(text));
+                        if (!s.Same(v))
+                        {
+                            s.Commit(v);
+                            s.FireChanged();
+                        }
+                        if (Editing != null)
+                            Editing(s);
+                        break;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                ModUI.Log(Caption + ": ошибка в Opened/Editing: " + ex);
+            }
+            var off = new List<string>();
+            var hidden = new List<string>();
+            var labels = new Dictionary<string, string>();
+            foreach (var e in Everything())
+            {
+                string key = e.EntryKey;
+                if (key == null)
+                    continue;
+                if (!e.Enabled)
+                    off.Add(key);
+                if (!e.Visible)
+                    hidden.Add(key);
+                string label = e.LiveText;
+                if (label != null)
+                    labels[key] = label;
+            }
+            int state = close ? 2 : rebuild ? 1 : 0;
+            rebuild = false;
+            return new object[] { null, off.ToArray(), hidden.ToArray(), labels, state };
+        }
+
+        // "button:<ключ>", "footer:<ключ>" (true — закрыть окно), "closed".
+        bool Command(string command)
+        {
+            try
+            {
+                if (command == "closed")
+                {
+                    open = rebuild = close = false;
+                    if (Closed != null)
+                        Closed();
+                    return false;
+                }
+                if (command.StartsWith("button:"))
+                {
+                    string key = command.Substring(7);
+                    foreach (var e in Everything())
+                    {
+                        var b = e as ButtonItem;
+                        if (b != null && b.Key == key && b.Action != null)
+                            b.Action();
+                    }
+                    return false;
+                }
+                if (command.StartsWith("footer:"))
+                {
+                    string key = command.Substring(7);
+                    foreach (var b in footer)
+                        if (b.Key == key)
+                            return b.Click == null || b.Click();
+                }
+            }
+            catch (Exception ex)
+            {
+                ModUI.Log(Caption + ": ошибка в команде " + command + ": " + ex);
+            }
+            return false;
         }
     }
 }

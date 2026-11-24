@@ -38,6 +38,8 @@ namespace Fd32.ModUI
         public static string ToolbarLabel { get { return T("Подпись на панели", "Toolbar label"); } }
         public static string ToolbarLabelTip { get { return T("Текст под значком на панели действий: не длиннее 9 символов",
                                                                "Text under the icon on the toolbar: up to 9 characters"); } }
+        public static string Transparency { get { return T("Прозрачность", "Transparency"); } }
+        public static string ColorTip { get { return T("Щелчок — показать или скрыть ползунки", "Click to show or hide the sliders"); } }
         public static string Empty { get { return T("У этого мода нет настроек.", "This mod has no settings."); } }
     }
 }

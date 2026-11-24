@@ -45,6 +45,8 @@ namespace Fd32.ModUI
         static readonly MyStringId[] TexCombo = { Tex("combobox_default_left"), Tex("combobox_default_center"), Tex("combobox_default_right") };
         static readonly MyStringId[] TexComboHover = { Tex("combobox_default_highlight_left"), Tex("combobox_default_highlight_center"), Tex("combobox_default_highlight_right") };
         static readonly MyStringId[] TexComboActive = { Tex("combobox_default_active_left"), Tex("combobox_default_active_center"), Tex("combobox_default_active_right") };
+        static readonly MyStringId[] TexHueRail = { Tex("hue_slider_rail_left"), Tex("hue_slider_rail_center"), Tex("hue_slider_rail_right") };
+        static readonly MyStringId TexHueThumb = Tex("hue_slider_thumb"), TexHueThumbHover = Tex("hue_slider_thumb_highlight");
         public static readonly MyStringId TexClose = Tex("button_close_symbol"), TexCloseHover = Tex("button_close_symbol_highlight");
         static readonly MyStringId[] TexScroll = { Tex("scrollbar_v_thumb_top"), Tex("scrollbar_v_thumb_center"), Tex("scrollbar_v_thumb_bottom") };
         static readonly MyStringId[] TexScrollHover = { Tex("scrollbar_v_thumb_top_highlight"), Tex("scrollbar_v_thumb_center_highlight"), Tex("scrollbar_v_thumb_bottom_highlight") };
@@ -383,14 +385,25 @@ namespace Fd32.ModUI
 
         public void SliderBar(RectangleF r, float t, bool hover)
         {
+            DrawSlider(r, t, TexRailL, TexRailC, TexRailR, hover ? TexThumbHover : TexThumb);
+        }
+
+        // Ванильный ползунок оттенка (стиль Hue): радуга на рельсе, свой бегунок; размеры — как у обычного.
+        public void HueBar(RectangleF r, float t, bool hover)
+        {
+            DrawSlider(r, t, TexHueRail[0], TexHueRail[1], TexHueRail[2], hover ? TexHueThumbHover : TexHueThumb);
+        }
+
+        void DrawSlider(RectangleF r, float t, MyStringId left, MyStringId center, MyStringId right, MyStringId thumb)
+        {
             float capW = SliderCap(r);
             // середина — первой и на 1 px под края: игра округляет X и ширину куска по отдельности, встык бывает щель в 1 px
-            Sprite(TexRailC, new RectangleF(r.X + capW - Px.X, r.Y, r.Width - 2 * capW + 2 * Px.X, r.Height), Color.White);
-            Sprite(TexRailL, new RectangleF(r.X, r.Y, capW, r.Height), Color.White);
-            Sprite(TexRailR, new RectangleF(r.X + r.Width - capW, r.Y, capW, r.Height), Color.White);
+            Sprite(center, new RectangleF(r.X + capW - Px.X, r.Y, r.Width - 2 * capW + 2 * Px.X, r.Height), Color.White);
+            Sprite(left, new RectangleF(r.X, r.Y, capW, r.Height), Color.White);
+            Sprite(right, new RectangleF(r.X + r.Width - capW, r.Y, capW, r.Height), Color.White);
             float th = r.Height * 32f / 55f, tw = th * Px.X / Px.Y;
             float cx = SliderX(r, t);
-            Sprite(hover ? TexThumbHover : TexThumb, new RectangleF(cx - tw / 2f, r.Y + (r.Height - th) / 2f, tw, th), Color.White);
+            Sprite(thumb, new RectangleF(cx - tw / 2f, r.Y + (r.Height - th) / 2f, tw, th), Color.White);
         }
 
         // Vanilla vertical scroll bar thumb (top / centre / bottom pieces; the caps are square on screen).

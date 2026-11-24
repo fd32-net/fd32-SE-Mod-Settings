@@ -13,7 +13,7 @@ namespace Fd32.ModUI
 
         public string Owner, Caption, Template;
         public bool AskLabel;
-        public List<Item> Values;                   // только число, выбор, текст
+        public List<Item> Values;                   // только число, выбор, текст, цвет
         public List<Item> Items;                    // что рисует окно: значения + разделитель и поле подписи
         public Func<Dictionary<string, string>, string[]> Check;
         public Action<Dictionary<string, string>, string> Ok;
@@ -53,7 +53,7 @@ namespace Fd32.ModUI
             var list = Item.ParseList(a[4] as object[], out error);
             if (list == null)
                 return null;
-            f.Values = list.FindAll(x => x.Kind == "number" || x.Kind == "choice" || x.Kind == "text");
+            f.Values = list.FindAll(x => x.Kind == "number" || x.Kind == "choice" || x.Kind == "text" || x.Kind == "color");
             var keys = new HashSet<string>();
             foreach (var it in f.Values)
                 if (!keys.Add(it.Key))

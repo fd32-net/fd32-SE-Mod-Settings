@@ -14,14 +14,15 @@ namespace Fd32.ModUI
     public class SettingsWindow : MyModScreen
     {
         static readonly RectangleF FullWin = new RectangleF(0.02f, 0.05f, 0.96f, 0.90f);
-        // Раскладка: у окна настроек — постоянная, у окна ввода (форма) — по числу значений (FormLayout).
-        readonly RectangleF Win;
-        readonly float CaptionY, CaptionLine, ColTop, FooterTop, ColBottom, LX, RX;
+        // Раскладка: у окна настроек и широкого окна мода — постоянная, у окна ввода и узкого окна мода — по содержимому
+        // (CompactLayout). Перестройка окна мода (Rebuild) может её поменять.
+        RectangleF Win;
+        float CaptionY, CaptionLine, ColTop, FooterTop, ColBottom, LX, RX;
         const float ListW = 0.20f, MidW = 0.42f, Gap = 0.015f, ScrollW = 0.008f;
         const float TabRowH = 0.038f, CtrlH = 0.04f, BtnW = 0.176f, BtnH = 0.052f, FieldW = 0.085f, Indent = 0.015f;
         static readonly MyStringId TexTriangle = MyStringId.GetOrCompute("Triangle");
 
-        public readonly MenuEntry Menu;
+        public MenuEntry Menu { get; private set; }
         readonly Gx g = new Gx();
         readonly Dictionary<string, string> edit = new Dictionary<string, string>();
         readonly HashSet<string> touched = new HashSet<string>();
@@ -53,14 +54,18 @@ namespace Fd32.ModUI
         RectangleF openHead;
         readonly Scroller list = new Scroller();
 
+        // цвет: раскрытые (ползунки видны) и последние H, S, V каждого — чтобы оттенок не прыгал при S = 0 или V = 0
+        readonly HashSet<string> colorOpen = new HashSet<string>();
+        readonly Dictionary<string, Vector3> hsv = new Dictionary<string, Vector3>();
+
         // назначение горячей клавиши
         Item capture;
         readonly List<MyKeys> pressed = new List<MyKeys>();
         readonly Dictionary<string, string> conflicts = new Dictionary<string, string>();   // ключ -> где ещё занята
 
         // колонки
-        readonly float midX, midW, infoX, infoW;
-        readonly bool hasInfo;
+        float midX, midW, infoX, infoW;
+        bool hasInfo, showTabs;
 
         class Scroller
         {
@@ -74,26 +79,18 @@ namespace Fd32.ModUI
         bool labelManual;                   // игрок сам правил подпись — по шаблону её больше не пересчитываем
         bool labelWarned;
 
-        public SettingsWindow(MenuEntry menu) : this(menu, null, FullWin) { }
+        public SettingsWindow(MenuEntry menu) : this(menu, null, null, FullWin) { }
 
-        public SettingsWindow(FormRequest request) : this(request.AsMenu(), request, FormLayout(request)) { }
+        public SettingsWindow(FormRequest request) : this(request.AsMenu(), request, null, CompactLayout(request.Items)) { }
 
-        SettingsWindow(MenuEntry menu, FormRequest request, RectangleF win)
+        public SettingsWindow(WindowRequest request) : this(request.AsMenu(), null, request, WindowLayout(request)) { }
+
+        SettingsWindow(MenuEntry menu, FormRequest request, WindowRequest window, RectangleF win)
             : base("ModUI_Settings", new Vector2(win.X + win.Width / 2f, win.Y + win.Height / 2f), new Vector2(win.Width, win.Height), Vector4.One)
         {
             Menu = menu;
             form = request;
-            Win = win;
-            if (form == null)
-            {
-                CaptionY = 0.10f; CaptionLine = 0.13f; ColTop = 0.15f; FooterTop = 0.862f; ColBottom = 0.847f; LX = 0.045f; RX = 0.955f;
-            }
-            else
-            {
-                CaptionY = win.Y + FormCaptionY; CaptionLine = win.Y + FormCaptionLine; ColTop = win.Y + FormColTop;
-                ColBottom = win.Y + win.Height - FormFooterH; FooterTop = ColBottom + 0.005f;
-                LX = win.X + FormPad; RX = win.X + win.Width - FormPad;
-            }
+            this.win = window;
             CloseButtonEnabled = false;
             EnabledBackgroundFade = true;
             g.OnPress = keep =>
@@ -101,23 +98,104 @@ namespace Fd32.ModUI
                 if (!keep)
                     CommitField();
             };
-            foreach (var it in menu.All())
-            {
-                if (it.IsSetting)
-                    settings.Add(it);
-                if (it.Kind == "group" && it.Collapsible && it.Collapsed)
-                    collapsed.Add(it);
-            }
-            hasInfo = form == null && menu.HasInfo;
-            midX = form == null ? LX + ListW + Gap : LX;
-            midW = hasInfo ? MidW : RX - midX;
-            infoX = midX + midW + Gap;
-            infoW = RX - infoX;
+            Layout(win);
+            Index();
             Pull(true);
             CallEdit("");                   // моду: окно открыто (Opened, Editing с Changed = null)
+            if (Live)
+                Pull(true);                 // в Opened мод мог поменять значения
             UpdateConflicts();
             if (form != null)
                 FormOpened();
+        }
+
+        // Общее окно мода (ModUI.Window): значения живые, кнопки внизу — свои. null — окно настроек или окно ввода.
+        readonly WindowRequest win;
+        int pendingState;                   // ответ мода: 1 — перестроить окно, 2 — закрыть
+        readonly Dictionary<string, string> blockText = new Dictionary<string, string>();   // текст Func-блоков (раз в полсекунды)
+
+        bool Live { get { return win != null; } }
+        bool Compact { get { return form != null || (win != null && !win.Wide); } }
+
+        void Layout(RectangleF w)
+        {
+            Win = w;
+            if (!Compact)
+            {
+                CaptionY = 0.10f; CaptionLine = 0.13f; ColTop = 0.15f; FooterTop = 0.862f; ColBottom = 0.847f; LX = 0.045f; RX = 0.955f;
+            }
+            else
+            {
+                CaptionY = w.Y + FormCaptionY; CaptionLine = w.Y + FormCaptionLine; ColTop = w.Y + FormColTop;
+                ColBottom = w.Y + w.Height - FormFooterH; FooterTop = ColBottom + 0.005f;
+                LX = w.X + FormPad; RX = w.X + w.Width - FormPad;
+            }
+        }
+
+        // Списки настроек и свёрнутых групп, колонки — по описанию меню.
+        void Index()
+        {
+            settings.Clear();
+            foreach (var it in Menu.All())
+            {
+                if (it.IsSetting)
+                    settings.Add(it);
+                if (it.Kind == "group" && it.Collapsible)
+                {
+                    bool known = it.Key != null && groupKnown.Contains(it.Key);
+                    if (known ? groupClosed.Contains(it.Key) : it.Collapsed)
+                        collapsed.Add(it);
+                }
+            }
+            hasInfo = form == null && Menu.HasInfo && !Compact;
+            showTabs = form == null && (win == null || Menu.Tabs.Count > 1) && !Compact;
+            midX = showTabs ? LX + ListW + Gap : LX;
+            midW = hasInfo ? MidW : RX - midX;
+            infoX = midX + midW + Gap;
+            infoW = RX - infoX;
+            if (tab >= Menu.Tabs.Count)
+                tab = 0;
+        }
+
+        // группы до перестройки окна (Rebuild): какие были и какие из них свёрнуты — игрок мог их раскрыть или свернуть
+        readonly HashSet<string> groupKnown = new HashSet<string>(), groupClosed = new HashSet<string>();
+
+        // Перестроить окно мода по новому описанию (w.Rebuild()): прокрутка, закладка, раскрытые цвета и группы сохраняются.
+        void Rebuild()
+        {
+            string error;
+            if (!win.Load(out error))
+            {
+                Log.Write("окно " + win.Owner + ": перестройка: " + error);
+                return;
+            }
+            groupKnown.Clear();
+            groupClosed.Clear();
+            foreach (var it in Menu.All())
+                if (it.Kind == "group" && it.Key != null)
+                {
+                    groupKnown.Add(it.Key);
+                    if (collapsed.Contains(it))
+                        groupClosed.Add(it.Key);
+                }
+            fieldKey = null;
+            fieldItem = null;
+            openChoice = null;
+            capture = null;
+            Menu = win.AsMenu();
+            collapsed.Clear();
+            if (Compact)
+            {
+                var r = WindowLayout(win);
+                Layout(r);
+                Position = new Vector2(r.X + r.Width / 2f, r.Y + r.Height / 2f);
+                Size = new Vector2(r.Width, r.Height);
+            }
+            Index();
+            edit.Clear();
+            blockText.Clear();
+            Pull(true);
+            CallEdit(null);
         }
 
         static RectangleF R(float x, float y, float w, float h) { return new RectangleF(x, y, w, h); }
@@ -161,6 +239,8 @@ namespace Fd32.ModUI
             }
             if (it.Kind == "hotkey")
                 return Hk.Normalize(ref s);
+            if (it.Kind == "color")
+                return Clr.Normalize(it, ref s);
             float f;
             if (!Num.TryParse(s, out f))
                 return false;
@@ -192,7 +272,11 @@ namespace Fd32.ModUI
             if (form != null)
                 FormChanged(it);
             if (differs)
+            {
                 CallEdit(it.Key);
+                if (Live)
+                    Pull(true);             // мод мог поменять и другие значения
+            }
         }
 
         void SetNum(Item it, float v) { Change(it, Num.Str(Num.Normalize(it, v))); }
@@ -232,6 +316,25 @@ namespace Fd32.ModUI
                 disabled.UnionWith(dis);
             if (hid != null)
                 hidden.UnionWith(hid);
+            var labels = r.Length > 3 ? r[3] as Dictionary<string, string> : null;
+            if (labels != null)
+            {
+                foreach (var it in Menu.All())
+                {
+                    string text;
+                    if (it.Key != null && labels.TryGetValue(it.Key, out text) && text != null)
+                        it.Label = text;
+                }
+                if (win != null)
+                    foreach (var f in win.Footer)
+                    {
+                        string text;
+                        if (f.Key != null && labels.TryGetValue(f.Key, out text) && text != null)
+                            f.Label = text;
+                    }
+            }
+            if (Live && r.Length > 4 && r[4] is int && (int)r[4] > pendingState)
+                pendingState = (int)r[4];
             if (fieldItem != null && !Usable(fieldItem))
             {
                 fieldKey = null;            // поле стало недоступным — ввод отменяется
@@ -313,7 +416,7 @@ namespace Fd32.ModUI
             CommitField();
             fieldKey = it.Key;
             fieldItem = it;
-            fieldText = it.Kind == "number" ? Num.Show(it, N(it)) : edit[it.Key];
+            fieldText = it.Kind == "number" ? Num.Show(it, N(it)) : it.Kind == "color" ? Clr.Show(it, edit[it.Key]) : edit[it.Key];
             caret = anchor = fieldText.Length;
             blink = 0;
         }
@@ -326,6 +429,12 @@ namespace Fd32.ModUI
             float f;
             if (it.Kind == "text")
                 Change(it, it.CleanText(fieldText));
+            else if (it.Kind == "color")
+            {
+                string s = fieldText;
+                if (Clr.Normalize(it, ref s))       // неверное — откат, как у ванили
+                    Change(it, s);
+            }
             else if (Num.TryParse(fieldText, out f))
                 SetNum(it, f);
             fieldKey = null;
@@ -395,12 +504,13 @@ namespace Fd32.ModUI
         // Вставить строку вместо выделения; лишние символы (сверх длины, не цифры в числе) отбрасываются.
         void InsertText(string add)
         {
-            bool text = fieldItem.Kind == "text";
-            int max = text ? fieldItem.MaxLength : 16;
+            bool text = fieldItem.Kind == "text", color = fieldItem.Kind == "color";
+            int max = text ? fieldItem.MaxLength : color ? (fieldItem.HasAlpha ? 9 : 7) : 16;
             var sb = new System.Text.StringBuilder();
             foreach (char ch in add)
-                if (!char.IsControl(ch) && (text || char.IsDigit(ch) || ch == '.' || ch == ',' || ch == '-'))
-                    sb.Append(ch);
+                if (!char.IsControl(ch) && (text || (color ? IsHex(ch) || ch == '#' :
+                                                     char.IsDigit(ch) || ch == '.' || ch == ',' || ch == '-')))
+                    sb.Append(color ? char.ToUpperInvariant(ch) : ch);
             if (sb.Length == 0)
                 return;
             if (HasSelection)
@@ -413,6 +523,8 @@ namespace Fd32.ModUI
             caret = anchor = caret + ins.Length;
             blink = 0;
         }
+
+        static bool IsHex(char ch) { return (ch >= '0' && ch <= '9') || (ch >= 'a' && ch <= 'f') || (ch >= 'A' && ch <= 'F'); }
 
         // Слова — как у ванили (MyGuiControlTextbox.GetPreviousSpace / GetNextSpace): граница — только пробел.
         int PrevSpace()
@@ -582,26 +694,51 @@ namespace Fd32.ModUI
         const float FormBtnW = 0.176f * 0.75f, FormBtnH = 0.052f * 0.85f;
         const float FormFooterH = 0.005f + 0.013f + FormBtnH + 0.025f;
 
-        // Размер окна ввода: ширина как у ванильного «Количества», высота — по значениям (не выше 0.9, дальше прокрутка).
-        static RectangleF FormLayout(FormRequest f)
+        // Размер окна ввода и узкого окна мода: ширина как у ванильного «Количества», высота — по содержимому
+        // (не выше 0.9, дальше прокрутка). Строки окна ввода — значения и подпись; у окна мода — все элементы.
+        static RectangleF CompactLayout(List<Item> items, bool form = true)
         {
+            float w = FormW - 2 * FormPad - ScrollW - 0.012f;
             float content = 0.006f + 0.01f;
-            foreach (var it in f.Items)
-                content += FormItemHeight(it);
+            foreach (var it in items)
+                content += Measure(it, w, form);
             float h = Math.Min(0.9f, FormColTop + content + FormFooterH);
             return new RectangleF(0.5f - FormW / 2f, 0.5f - h / 2f, FormW, h);
         }
 
-        // Высота строки — как её рисует DrawItemBody.
-        static float FormItemHeight(Item it)
+        static RectangleF WindowLayout(WindowRequest w)
+        {
+            if (w.Wide)
+                return FullWin;
+            var m = w.AsMenu();
+            return CompactLayout(m.Tabs.Count > 0 ? m.Tabs[0].Items : new List<Item>(), false);
+        }
+
+        // Высота строки — как её рисует DrawItemBody (цвет в окне ввода раскрыт, в окне мода при открытии — свёрнут).
+        static float Measure(Item it, float w, bool form)
         {
             switch (it.Kind)
             {
                 case "separator": return 0.02f;
-                case "toggle": return 0.051f;
+                case "label":
+                    return Gx.Wrap(it.Label ?? "", Gx.TipScale, w).Split('\n').Length * Gx.LineHeight(Gx.TipScale) + 0.012f;
+                case "button": return BtnH * 0.85f + 0.012f;
+                case "toggle":
+                case "hotkey": return 0.051f;
                 case "number":
                 case "choice":
                 case "text": return 0.03f + CtrlH + 0.014f;
+                case "color": return 0.03f + CtrlH + 0.014f + (form ? ColorRows(it) * ColorRowH + 0.004f : 0f);
+                case "textblock": return Paragraphs(BlockSource(it), 0f, 0f, w, null) + 0.012f;
+                case "image": return ImageHeight(it, w * it.WidthPart) + 0.012f;
+                case "group":
+                {
+                    float h = 0.036f + 0.008f + 0.006f;
+                    if (!(it.Collapsible && it.Collapsed) && it.Children != null)
+                        foreach (var c in it.Children)
+                            h += Measure(c, w - Indent, form);
+                    return h;
+                }
             }
             return 0.04f;
         }
@@ -611,7 +748,7 @@ namespace Fd32.ModUI
         {
             var r = new List<Item>();
             foreach (var it in form.Values)
-                if ((it.Kind == "number" && (it.Parts & Item.PartField) != 0) || it.Kind == "text")
+                if ((it.Kind == "number" && (it.Parts & Item.PartField) != 0) || it.Kind == "text" || it.Kind == "color")
                     r.Add(it);
             return r;
         }
@@ -676,6 +813,8 @@ namespace Fd32.ModUI
                 }
                 else if (it.Kind == "choice")
                     s = it.OptionLabel(s);
+                else if (it.Kind == "color")
+                    s = Clr.Hex(Clr.Get(it, s)).Substring(0, 7);     // "#RRGGBB" — 7 из 9 символов подписи
                 parts[i] = s ?? "";
             }
             string label;
@@ -739,6 +878,11 @@ namespace Fd32.ModUI
 
         protected override void OnClosed(bool isUnloading)
         {
+            if (win != null)
+            {
+                win.SafeCommand("closed");
+                return;
+            }
             if (form != null)
             {
                 if (!closedByOk && !isUnloading)
@@ -767,6 +911,11 @@ namespace Fd32.ModUI
                 fieldItem = null;
                 return false;
             }
+            if (win != null && FooterWith(false) != null)
+            {
+                CancelWindow();             // окно мода: Esc — кнопка Cancel(); закроет её обработчик
+                return false;
+            }
             return true;
         }
 
@@ -789,6 +938,17 @@ namespace Fd32.ModUI
                 Ok();
                 return;
             }
+            // окно мода: Enter вне поля — кнопка Default()
+            if (win != null && !hadField && openChoice == null && IsOpen && MyAPIGateway.Input.IsNewKeyPressed(MyKeys.Enter))
+            {
+                var d = FooterWith(true);
+                if (d != null)
+                {
+                    Press(d);
+                    if (!IsOpen)
+                        return;
+                }
+            }
             g.Input();
         }
 
@@ -796,22 +956,42 @@ namespace Fd32.ModUI
         {
             frame++;
             blink++;
+            if (Live && frame % 6 == 0)
+            {
+                Pull(true);                 // окно мода: значения живые — мод мог их поменять
+                CallEdit(null);             // доступность, видимость, подписи, «перестроить» / «закрыть»
+            }
             if (frame % 30 == 0 && form == null)
             {
-                Pull(false);                // мод мог сам поменять значения,
-                CallEdit(null);             // доступность и видимость
+                if (!Live)
+                {
+                    Pull(false);            // мод мог сам поменять значения,
+                    CallEdit(null);         // доступность и видимость
+                }
                 UpdateConflicts();
                 infoTab = -1;               // и текст справа (Func<string>)
+                blockText.Clear();          // и многострочный текст (Func<string>)
+            }
+            if (pendingState == 2)
+            {
+                pendingState = 0;
+                CloseNow();
+                return;
+            }
+            if (pendingState == 1)
+            {
+                pendingState = 0;
+                Rebuild();
             }
             DrawMouseCursor = capture == null;
             g.Begin(alpha);
             g.Blocked = openChoice != null || capture != null;
-            g.Text(Menu.Name, 0.5f, CaptionY, 0.8f, Color.White, Gx.Center, Win.Width - (form == null ? 0.2f : 0.08f), "ScreenCaption");
-            if (form == null)
+            g.Text(Menu.Name, 0.5f, CaptionY, 0.8f, Color.White, Gx.Center, Win.Width - (Compact ? 0.08f : 0.2f), "ScreenCaption");
+            if (form == null && win == null)
                 g.Text(Menu.Version, LX, CaptionY, 0.6f, Gx.DimColor, Gx.LeftCenter);
             g.HLine(LX, CaptionLine, RX - LX, Gx.Line);
 
-            if (form == null)
+            if (showTabs)
                 DrawTabs();
             DrawMiddle();
             if (hasInfo)
@@ -820,7 +1000,9 @@ namespace Fd32.ModUI
             // низ
             g.HLine(LX, FooterTop, RX - LX, Gx.Line);
             float by = FooterTop + 0.013f;
-            if (form == null)
+            if (win != null)
+                DrawFooter(by);
+            else if (form == null)
             {
                 float sx = RX - BtnW, cx = sx - 0.008f - BtnW;
                 g.Button(R(sx, by, BtnW, BtnH), Loc.Ok, Ok, false, Changed || fieldKey != null);
@@ -836,7 +1018,8 @@ namespace Fd32.ModUI
 
             // крестик как у ванили: стиль Close 34x31 px, правый верхний угол окна + (-0.013, 0.015)
             const float xw = 34f / 1600f, xh = 31f / 1200f;
-            g.IconButton(R(Win.X + Win.Width - 0.013f - xw, Win.Y + 0.015f, xw, xh), Gx.TexClose, Gx.TexCloseHover, () => CloseNow());
+            g.IconButton(R(Win.X + Win.Width - 0.013f - xw, Win.Y + 0.015f, xw, xh), Gx.TexClose, Gx.TexCloseHover,
+                         () => { if (win != null) CancelWindow(); else CloseNow(); });
 
             g.Blocked = false;
             if (openChoice != null)
@@ -944,6 +1127,12 @@ namespace Fd32.ModUI
                     return DrawTextField(it, x, w, y);
                 case "hotkey":
                     return DrawHotkey(it, x, w, y);
+                case "color":
+                    return DrawColor(it, x, w, y);
+                case "textblock":
+                    return y + Paragraphs(BlockText(it), x, y, w, g) + 0.012f;
+                case "image":
+                    return DrawImage(it, x, w, y);
             }
             return y;
         }
@@ -1154,6 +1343,280 @@ namespace Fd32.ModUI
             g.TextBox(box, shown, FieldHover(box), focus, caret, blink % 60 < 45, false, it.Placeholder, focus ? SelStart : 0, focus ? SelEnd : 0);
             FieldTarget(it, box, shown, focus);
             return cy + CtrlH + 0.014f;
+        }
+
+        // ---- многострочный текст и картинка (окно мода) ----
+
+        // Текст блока: строка от мода или его Func (берётся заново раз в полсекунды, см. OnDraw).
+        string BlockText(Item it)
+        {
+            if (it.Source == null)
+                return it.Label ?? "";
+            string s;
+            if (it.Key != null && blockText.TryGetValue(it.Key, out s))
+                return s;
+            s = BlockSource(it);
+            if (it.Key != null)
+                blockText[it.Key] = s;
+            return s;
+        }
+
+        static string BlockSource(Item it)
+        {
+            var f = it.Source as Func<string>;
+            if (f == null)
+                return it.Label ?? "";
+            try
+            {
+                return f() ?? "";
+            }
+            catch (Exception e)
+            {
+                Log.Write("текст окна: " + e.Message);
+                return "";
+            }
+        }
+
+        // Абзацы с переносом, как в Info: строка "# ..." — заголовок (белый шрифт, крупнее). g == null — только высота.
+        static float Paragraphs(string text, float x, float y, float w, Gx g)
+        {
+            float h = 0f;
+            foreach (var para in (text ?? "").Split('\n'))
+            {
+                bool head = para.StartsWith("# ");
+                float scale = head ? Gx.TextScale : Gx.TipScale;
+                string lines = Gx.Wrap(head ? para.Substring(2) : para, scale, w);
+                if (g != null)
+                    g.Lines(lines, x, y + h, scale, Gx.TextColor, Gx.TopLeft, head ? Gx.FontHover : Gx.Font);
+                h += lines.Split('\n').Length * Gx.LineHeight(scale) + (head ? 0.006f : 0f);
+            }
+            return h;
+        }
+
+        static readonly Dictionary<string, float> textureAspect = new Dictionary<string, float>();
+
+        // Высота картинки шириной w: по пропорциям мода или текстуры (пиксели экрана не квадратны в долях 0..1).
+        static float ImageHeight(Item it, float w)
+        {
+            float aspect = it.Aspect;
+            if (aspect <= 0f)
+            {
+                if (!textureAspect.TryGetValue(it.Material ?? "", out aspect))
+                {
+                    aspect = 1f;
+                    try
+                    {
+                        var size = MyScreenSpaceSprite.GetTextureSize(MyStringId.GetOrCompute(it.Material ?? ""));
+                        if (size.X > 0 && size.Y > 0)
+                            aspect = size.X / size.Y;
+                    }
+                    catch (Exception) { }
+                    textureAspect[it.Material ?? ""] = aspect;
+                }
+            }
+            var px = MyScreenSpace.PixelSizeToNormalized(new Vector2(1f, 1f));
+            return w * (px.Y / Math.Max(1e-6f, px.X)) / Math.Max(0.01f, aspect);
+        }
+
+        static readonly HashSet<string> missingWarned = new HashSet<string>();
+
+        // Картинка по центру колонки; материала нет — штриховка и строка в логе (один раз).
+        float DrawImage(Item it, float x, float w, float y)
+        {
+            float iw = w * it.WidthPart, ih = ImageHeight(it, iw);
+            var r = R(x + (w - iw) / 2f, y, iw, ih);
+            var id = MyStringId.GetOrCompute(it.Material ?? "");
+            bool ok = false;
+            try
+            {
+                ok = MyScreenSpaceSprite.IsMaterialAvailable(id);
+            }
+            catch (Exception) { }
+            if (ok)
+                g.Sprite(id, r, Color.White);
+            else
+            {
+                g.Hatch(r);
+                if (missingWarned.Add(it.Material ?? ""))
+                    Log.Write("картинка окна " + Menu.Id + ": материала \"" + it.Material + "\" нет");
+            }
+            if (!string.IsNullOrEmpty(it.Tip))
+                g.Target(r, null, null, it.Tip);
+            return y + ih + 0.012f;
+        }
+
+        // ---- нижние кнопки окна мода ----
+
+        bool FooterUsable(FooterItem f) { return f.Key == null || (!disabled.Contains(f.Key) && !hidden.Contains(f.Key)); }
+
+        FooterItem FooterWith(bool isDefault)
+        {
+            foreach (var f in win.Footer)
+                if ((isDefault ? f.Default : f.Cancel) && FooterUsable(f))
+                    return f;
+            return null;
+        }
+
+        // Нажата кнопка внизу: мод решает, закрыть ли окно (true).
+        void Press(FooterItem f)
+        {
+            CommitField();
+            bool close = win.SafeCommand("footer:" + f.Key);
+            if (!IsOpen)
+                return;
+            Pull(true);
+            CallEdit(null);
+            if (close)
+                CloseNow();
+        }
+
+        // Esc и крестик: кнопка Cancel(), если она есть (окно закроется, если мод вернёт true), иначе просто закрыть.
+        void CancelWindow()
+        {
+            var c = FooterWith(false);
+            if (c != null)
+                Press(c);
+            else
+                CloseNow();
+        }
+
+        // Кнопки слева и справа (как «По умолчанию» и «Отмена» / «ОК» в настройках); в узком окне без кнопок слева — по центру.
+        void DrawFooter(float by)
+        {
+            float bw = Compact ? FormBtnW : BtnW, bh = Compact ? FormBtnH : BtnH, gap = 0.008f;
+            var left = new List<FooterItem>();
+            var right = new List<FooterItem>();
+            foreach (var f in win.Footer)
+                if (f.Key == null || !hidden.Contains(f.Key))
+                    (f.Left ? left : right).Add(f);
+            float lx = LX;
+            foreach (var f in left)
+            {
+                DrawFooterButton(f, R(lx, by, bw, bh));
+                lx += bw + gap;
+            }
+            float total = right.Count * bw + Math.Max(0, right.Count - 1) * gap;
+            float rx = Compact && left.Count == 0 ? 0.5f - total / 2f : RX - total;
+            foreach (var f in right)
+            {
+                DrawFooterButton(f, R(rx, by, bw, bh));
+                rx += bw + gap;
+            }
+        }
+
+        void DrawFooterButton(FooterItem f, RectangleF r)
+        {
+            var item = f;
+            bool enabled = f.Key == null || !disabled.Contains(f.Key);
+            g.Button(r, Gx.Fit(f.Label, Gx.TextScale, r.Width - 0.01f), () => Press(item), false, enabled, Gx.TextScale, f.Tip);
+        }
+
+        // ---- цвет ----
+
+        const float ColorRowH = CtrlH + 0.006f, HexW = 0.11f;
+
+        static int ColorRows(Item it) { return it.HasAlpha ? 4 : 3; }
+
+        // H, S, V цвета: последние с ползунков, если они дают тот же цвет (иначе оттенок прыгал бы при S = 0 или V = 0).
+        Vector3 Hsv(Item it, Color c)
+        {
+            Vector3 v;
+            if (hsv.TryGetValue(it.Key, out v))
+            {
+                Color back = v.HSVtoColor();
+                if (back.R == c.R && back.G == c.G && back.B == c.B)
+                    return v;
+            }
+            v = c.ColorToHSV();
+            hsv[it.Key] = v;
+            return v;
+        }
+
+        void SetHsv(Item it, Vector3 v, byte a)
+        {
+            v = new Vector3(MathHelper.Clamp(v.X, 0f, 1f), MathHelper.Clamp(v.Y, 0f, 1f), MathHelper.Clamp(v.Z, 0f, 1f));
+            Color c = v.HSVtoColor();
+            c.A = it.HasAlpha ? a : (byte)255;
+            hsv[it.Key] = v;
+            Change(it, Clr.Hex(c));
+        }
+
+        // Цвет — как ванильный выбор цвета прицела («Параметры» → «Игра»): строка подписи, под ней образец и поле Hex;
+        // щелчок по образцу раскрывает ползунки H (радуга), S, V и прозрачность (с .Alpha()). В окне ввода ползунки видны всегда.
+        float DrawColor(Item it, float x, float w, float y)
+        {
+            float cy = LabelLine(it, x, w, y);
+            Color c = Clr.Get(it, edit[it.Key]);
+            bool open = form != null || colorOpen.Contains(it.Key);
+
+            var swatch = R(x, cy, w - HexW - 0.006f, CtrlH);
+            bool hover = g.Hover(swatch);
+            g.Rect(swatch, Gx.PanelBg);
+            var inner = R(swatch.X + 3 * g.Px.X, swatch.Y + 3 * g.Px.Y, swatch.Width - 6 * g.Px.X, swatch.Height - 6 * g.Px.Y);
+            if (c.A < 255)
+                g.Hatch(inner);                     // под прозрачным цветом — штриховка, чтобы прозрачность было видно
+            g.Rect(inner, new Color(c.R, c.G, c.B) * (c.A / 255f));
+            g.Frame(swatch, hover && form == null ? Gx.Accent : Gx.ListBorder);
+            if (form == null)
+            {
+                // треугольник, как у сворачиваемой группы: вниз — раскрыт, вправо — свёрнут; цвет — контрастный к образцу
+                float s = 0.011f;
+                bool light = c.A > 128 && (c.R * 0.299f + c.G * 0.587f + c.B * 0.114f) > 150f;
+                MyScreenSpaceSprite.Draw(TexTriangle, new Vector2(swatch.X + swatch.Width - 0.012f, swatch.Y + swatch.Height / 2f),
+                                         new Vector2(s * 0.75f, s), (light ? Color.Black : Color.White) * g.Fade, Gx.Center,
+                                         open ? MathHelper.Pi : MathHelper.PiOver2, g.Layer);
+                g.Target(swatch, () =>
+                {
+                    if (!colorOpen.Remove(it.Key))
+                        colorOpen.Add(it.Key);
+                }, null, string.IsNullOrEmpty(it.Tip) ? Loc.ColorTip : it.Tip + "\n" + Loc.ColorTip);
+            }
+            else if (!string.IsNullOrEmpty(it.Tip))
+                g.Target(swatch, null, null, it.Tip);
+
+            var box = R(x + w - HexW, cy, HexW, CtrlH);
+            bool focus = fieldKey == it.Key;
+            string shown = focus ? fieldText : Clr.Show(it, edit[it.Key]);
+            g.TextBox(box, shown, FieldHover(box), focus, caret, blink % 60 < 45, selStart: focus ? SelStart : 0, selEnd: focus ? SelEnd : 0);
+            FieldTarget(it, box, shown, focus);
+            y = cy + CtrlH + 0.014f;
+            if (!open)
+                return y;
+
+            Vector3 v = Hsv(it, c);
+            string[] names = { "H:", "S:", "V:", Loc.Transparency };
+            float labW = 0f;
+            for (int i = 0; i < ColorRows(it); i++)
+                labW = Math.Max(labW, Gx.TextWidth(names[i], Gx.TextScale));
+            labW += 0.01f;
+            for (int i = 0; i < ColorRows(it); i++)
+            {
+                var rail = R(x + labW, y, w - labW, CtrlH);
+                g.Text(names[i], x, y + CtrlH / 2f, Gx.TextScale, Gx.TextColor, Gx.LeftCenter);
+                float t = i == 0 ? v.X : i == 1 ? v.Y : i == 2 ? v.Z : c.A / 255f;
+                if (i == 0)
+                    g.HueBar(rail, t, g.Hover(rail));
+                else
+                    g.SliderBar(rail, t, g.Hover(rail));
+                int part = i;
+                Action<Vector2> move = p =>
+                {
+                    float nt = g.SliderT(rail, p.X);
+                    Color now = Clr.Get(it, edit[it.Key]);
+                    Vector3 cur = Hsv(it, now);
+                    if (part == 0) cur.X = nt;
+                    else if (part == 1) cur.Y = nt;
+                    else if (part == 2) cur.Z = nt;
+                    SetHsv(it, cur, part == 3 ? (byte)Math.Round(nt * 255f) : now.A);
+                };
+                g.Target(rail, null, p =>
+                {
+                    move(p);
+                    return new Drag { Move = move };
+                }, it.Tip);
+                y += ColorRowH;
+            }
+            return y + 0.004f;
         }
 
         // ---- горячая клавиша ----

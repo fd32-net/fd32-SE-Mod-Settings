@@ -87,7 +87,7 @@ namespace Fd32.ModUI
     [MySessionComponentDescriptor(MyUpdateOrder.NoUpdate)]
     public class HubSession : MySessionComponentBase
     {
-        public const string Version = "V0.9.3";
+        public const string Version = "V0.10.0";
         public const long Channel = 3291573804L;     // канал SendModMessage центра
         public const int Protocol = 1;
 
@@ -158,6 +158,8 @@ namespace Fd32.ModUI
                     OnHello(a);
                 else if (kind == "ModUI.Ask")
                     OnAsk(a);
+                else if (kind == "ModUI.Window")
+                    OnWindow(a);
             }
             catch (Exception e)
             {
@@ -242,7 +244,7 @@ namespace Fd32.ModUI
         {
             var reply = a.Length > 1 ? a[1] as Action<int> : null;
             if (reply != null)
-                reply(FormRequest.Protocol);
+                reply(WindowRequest.Protocol);       // 1 — окно ввода, 2 — и общее окно мода
         }
 
         // Окно ввода значений для Set-действия тулбара (FormRequest.Parse).
@@ -259,6 +261,22 @@ namespace Fd32.ModUI
                 return;
             }
             new SettingsWindow(f).Open();
+        }
+
+        // Общее окно мода (WindowRequest.Parse).
+        void OnWindow(object[] a)
+        {
+            string error;
+            var w = WindowRequest.Parse(a, out error);
+            if (w == null)
+            {
+                Log.Write("окно " + (a.Length > 2 ? a[2] as string : "?") + ": " + error);
+                var command = a.Length > 6 ? a[6] as Func<string, bool> : null;
+                if (command != null)
+                    try { command("closed"); } catch (Exception) { }
+                return;
+            }
+            new SettingsWindow(w).Open();
         }
 
         void OnUnregister(object[] a)

@@ -5,6 +5,7 @@ using Sandbox.ModAPI;
 using VRage;
 using VRage.Input;
 using VRage.ModAPI;
+using VRageMath;
 
 namespace Fd32.ModUI
 {
@@ -25,8 +26,12 @@ namespace Fd32.ModUI
         public string[] Options, OptionLabels;
         public int MaxLength = DefaultMaxLength;
         public bool CheckConflicts;         // у клавиши: подсвечивать конфликты (мод включил .CheckConflicts())
+        public bool HasAlpha;               // у цвета: с прозрачностью (.Alpha())
+        public object Source;               // у многострочного текста: Func<string> (текст берётся заново) или null
+        public string Material;             // у картинки: TransparentMaterial / LCD-текстура / генерируемая текстура
+        public float Aspect, WidthPart = 1f; // у картинки: ширина / высота (0 — по текстуре), доля ширины колонки
 
-        public bool IsSetting { get { return Kind == "toggle" || Kind == "number" || Kind == "choice" || Kind == "text" || Kind == "hotkey"; } }
+        public bool IsSetting { get { return Kind == "toggle" || Kind == "number" || Kind == "choice" || Kind == "text" || Kind == "hotkey" || Kind == "color"; } }
 
         public string DefaultString
         {
@@ -107,6 +112,25 @@ namespace Fd32.ModUI
                             it.CheckConflicts = a.Length > 5 && a[5] is bool && (bool)a[5];
                             if (!Hk.Normalize(ref it.DefStr))
                                 it.DefStr = "";
+                            break;
+                        case "color":       // color, key, label, tip, default "#RRGGBBAA", alpha
+                            it.Key = (string)a[1]; it.Label = (string)a[2]; it.Tip = a[3] as string;
+                            it.HasAlpha = a.Length > 5 && a[5] is bool && (bool)a[5];
+                            it.DefStr = a[4] as string;
+                            if (!Clr.Normalize(it, ref it.DefStr))
+                                it.DefStr = "#FFFFFFFF";
+                            break;
+                        case "textblock":   // textblock, key, текст или Func<string>
+                            it.Key = a[1] as string;
+                            it.Source = a[2] as Func<string>;
+                            it.Label = a[2] as string ?? "";
+                            break;
+                        case "image":       // image, key, material, aspect (0 — по текстуре), доля ширины, tip
+                            it.Key = a[1] as string;
+                            it.Material = a[2] as string ?? "";
+                            it.Aspect = a[3] is float ? (float)a[3] : 0f;
+                            it.WidthPart = a[4] is float ? Math.Max(0.05f, Math.Min(1f, (float)a[4])) : 1f;
+                            it.Tip = a.Length > 5 ? a[5] as string : null;
                             break;
                         case "label":       // label, text, key
                             it.Label = (string)a[1];
@@ -288,6 +312,63 @@ namespace Fd32.ModUI
             {
                 return null;
             }
+        }
+    }
+
+    // Цвет: строка протокола "#RRGGBBAA" (заглавные), без прозрачности A = FF.
+    public static class Clr
+    {
+        public static bool TryParse(string s, out Color c)
+        {
+            c = new Color(255, 255, 255);
+            if (s == null)
+                return false;
+            s = s.Trim();
+            if (s.StartsWith("#"))
+                s = s.Substring(1);
+            if (s.Length != 6 && s.Length != 8)
+                return false;
+            uint u;
+            if (!uint.TryParse(s, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out u))
+                return false;
+            if (s.Length == 6)
+                u = (u << 8) | 0xFF;
+            c = new Color((int)(u >> 24), (int)((u >> 16) & 0xFF), (int)((u >> 8) & 0xFF), (int)(u & 0xFF));
+            return true;
+        }
+
+        public static string Hex(Color c)
+        {
+            return "#" + c.R.ToString("X2") + c.G.ToString("X2") + c.B.ToString("X2") + c.A.ToString("X2");
+        }
+
+        public static Color Get(Item it, string s)
+        {
+            Color c;
+            if (!TryParse(s, out c))
+                TryParse(it.DefStr, out c);
+            if (!it.HasAlpha)
+                c.A = 255;
+            return c;
+        }
+
+        // Привести к виду протокола; false — строка не цвет.
+        public static bool Normalize(Item it, ref string s)
+        {
+            Color c;
+            if (!TryParse(s, out c))
+                return false;
+            if (!it.HasAlpha)
+                c.A = 255;
+            s = Hex(c);
+            return true;
+        }
+
+        // Как показывать в поле Hex: "#RRGGBB", с прозрачностью — "#RRGGBBAA".
+        public static string Show(Item it, string s)
+        {
+            string h = Hex(Get(it, s));
+            return it.HasAlpha ? h : h.Substring(0, 7);
         }
     }
 
