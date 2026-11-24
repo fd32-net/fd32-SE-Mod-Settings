@@ -11,7 +11,7 @@
 
 [English version](README.md)
 
-> **Статус:** V0.9.1, опубликован в Steam Workshop: [fd32: Mod UI](https://steamcommunity.com/sharedfiles/filedetails/?id=3842864536) (ID `3842864536`). API настроек проверено в игре; Set-действия для тулбара — новое в V0.9.
+> **Статус:** V0.9.3, опубликован в Steam Workshop: [fd32: Mod UI](https://steamcommunity.com/sharedfiles/filedetails/?id=3842864536) (ID `3842864536`). API настроек проверено в игре; Set-действия для тулбара — новое в V0.9.
 
 - Без чат-команд и конфиг-файлов, которые нужно объяснять игрокам: всё делается в привычном окне игры.
 - Как в ванили: галочки, ползунки, поля ввода, выпадающие списки и назначение клавиш выглядят и работают так же,
@@ -707,6 +707,8 @@ public class MyActions : MySessionComponentBase
   (или оно не того типа) — берётся по умолчанию. Выбор хранится ключом, поэтому варианты переставлять можно.
 - `ModUI.IsReady` спрашивает центр, может ли он нарисовать окно (не чаще раза в секунду). Без центра окна нет,
   и действие на панель не кладётся. Прятать ли действие — решает мод.
+- На выделенном сервере `ModUI.IsReady` всегда `true`: игра проверяет `Enabled` действия и перед тем, как его выполнить,
+  а таймеры там должны его выполнять. Клиентские файлы до V0.9.2 возвращали там `false` — скопируйте новый `ModUI.cs`.
 
 **Своё действие.** Если `IMyTerminalAction` мод создаёт сам — форма с теми же значениями:
 
@@ -718,6 +720,15 @@ form.Label("Ст {0}");
 form.AddParameterDefinitions(action);                                      // значения по умолчанию, по порядку
 action.DoUserParameterRequestWithItem = (item, done) => form.Ask(item, done);
 action.ActionWithParameters = (block, args) => GoTo(block, (int)form.Read(args).Get(station));
+```
+
+**Окно без слота тулбара** (клиентский файл V0.9.3), например по кнопке терминала: `form.Open(ok, cancel)`.
+Поля подписи нет; `ok` получает значения, `cancel` (необязательный) вызывается на «Отмена» / Esc, а без центра — сразу.
+
+```csharp
+var form = ModUI.Form("Переименовать станцию");
+var name = form.Text("Имя", current).MaxLength(40);
+form.Open(v => Rename(block, v.Get(name)));
 ```
 
 ---

@@ -1,3 +1,4 @@
+## V0.9.3 - Client file: ValueForm.Open - the input window without a toolbar slot (e.g. from a terminal button); the hub is unchanged
 ## V0.9.2 - Toolbar Set actions run on a dedicated server: ModUI.IsReady is true there (the game checks Enabled before running an action); mods copy the new ModUI.cs
 ## V0.9.1 - Renamed to Mod UI; input window for toolbar Set actions: numbers, choices, on/off and text in one window, toolbar label by template
 ## V0.8.6 - First public release: gear button in the Esc menu, settings windows with toggles, numbers, choices, text fields, hotkeys and buttons

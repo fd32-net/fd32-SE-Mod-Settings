@@ -87,7 +87,7 @@ namespace Fd32.ModUI
     [MySessionComponentDescriptor(MyUpdateOrder.NoUpdate)]
     public class HubSession : MySessionComponentBase
     {
-        public const string Version = "V0.9.2";
+        public const string Version = "V0.9.3";
         public const long Channel = 3291573804L;     // канал SendModMessage центра
         public const int Protocol = 1;
 

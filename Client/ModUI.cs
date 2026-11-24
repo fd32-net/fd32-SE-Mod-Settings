@@ -1300,6 +1300,22 @@ namespace Fd32.ModUI
             }, () => done(false));
         }
 
+        // Окно ввода без слота тулбара (например, по кнопке терминала): «ОК» — ok(значения), «Отмена» / Esc / крестик —
+        // cancel (если задан). Поля подписи нет. Без центра — сразу cancel.
+        public void Open(Action<FormValues> ok, Action cancel = null)
+        {
+            bool ask = askLabel;
+            askLabel = false;
+            try
+            {
+                Show((v, label) => ok(v), () => { if (cancel != null) cancel(); });
+            }
+            finally
+            {
+                askLabel = ask;
+            }
+        }
+
         internal void Show(Action<FormValues, string> ok, Action cancel)
         {
             if (MyAPIGateway.Utilities.IsDedicated || !ModUI.IsReady)

@@ -11,7 +11,7 @@
 
 [Русская версия](README.ru.md)
 
-> **Status:** V0.9.1, published on the Steam Workshop: [fd32: Mod UI](https://steamcommunity.com/sharedfiles/filedetails/?id=3842864536) (ID `3842864536`). The settings API has been checked in-game; toolbar Set actions are new in V0.9.
+> **Status:** V0.9.3, published on the Steam Workshop: [fd32: Mod UI](https://steamcommunity.com/sharedfiles/filedetails/?id=3842864536) (ID `3842864536`). The settings API has been checked in-game; toolbar Set actions are new in V0.9.
 
 - No chat commands, no config files to explain to players: everything happens in a familiar game window.
 - Vanilla look and feel: checkboxes, sliders, text fields, combo boxes and key bindings look and behave like the
@@ -721,6 +721,15 @@ form.Label("St {0}");
 form.AddParameterDefinitions(action);                                      // the defaults, in order
 action.DoUserParameterRequestWithItem = (item, done) => form.Ask(item, done);
 action.ActionWithParameters = (block, args) => GoTo(block, (int)form.Read(args).Get(station));
+```
+
+**The window without a toolbar slot** (V0.9.3 client file), for example from a terminal button: `form.Open(ok, cancel)`.
+There is no label field; `ok` gets the values, `cancel` (optional) runs on Cancel / Esc, or at once without the hub.
+
+```csharp
+var form = ModUI.Form("Rename station");
+var name = form.Text("Name", current).MaxLength(40);
+form.Open(v => Rename(block, v.Get(name)));
 ```
 
 ---
