@@ -1,6 +1,6 @@
 // fd32: Mod UI — клиентский файл (протокол 1). Скопируйте его в свой мод без изменений:
 // Data\Scripts\<ВашМод>\ModUI.cs; в коде мода — using Fd32.ModUI;. Центр «fd32: Mod UI» укажите у мода обязательной
-// зависимостью Workshop. Описание API — README центра: https://github.com/fd32-net/fd32-SE-Mod-Settings.
+// зависимостью Workshop. Описание API — README центра: https://github.com/fd32-net/fd32-SE-Mod-UI.
 //
 // 1. Окно настроек (шестерёнка у «Настроек» в меню Esc):
 //

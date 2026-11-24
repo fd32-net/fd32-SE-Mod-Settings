@@ -1,12 +1,17 @@
-# Mod Settings
+# Mod UI
 
-**A settings hub for Space Engineers mods.** Your mod describes its settings in a few lines of C#. Mod Settings
-adds a gear button next to **Options** in the in-game Esc menu, lists every mod that uses it, and draws a
-settings window for each one, styled like the vanilla game.
+*Formerly **Mod Settings**.*
+
+**A UI hub for Space Engineers mods.** It draws two kinds of vanilla-style windows for your mod:
+
+- **Settings.** Your mod describes its settings in a few lines of C#. Mod UI adds a gear button next to **Options**
+  in the in-game Esc menu, lists every mod that uses it, and draws a settings window for each one.
+- **Values for toolbar actions.** Your mod adds *Set* actions with values (number, choice, on/off, text). When the player puts
+  one on a toolbar, Mod UI asks for the values and the slot label in one window. See [Toolbar Set actions](#toolbar-set-actions).
 
 [Русская версия](README.ru.md)
 
-> **Status:** V0.8.6, published on the Steam Workshop: [fd32: Mod Settings](https://steamcommunity.com/sharedfiles/filedetails/?id=3842864536) (ID `3842864536`). The client API below has been checked in-game.
+> **Status:** V0.9.1, published on the Steam Workshop: [fd32: Mod UI](https://steamcommunity.com/sharedfiles/filedetails/?id=3842864536) (ID `3842864536`). The settings API has been checked in-game; toolbar Set actions are new in V0.9.
 
 - No chat commands, no config files to explain to players: everything happens in a familiar game window.
 - Vanilla look and feel: checkboxes, sliders, text fields, combo boxes and key bindings look and behave like the
@@ -41,7 +46,9 @@ settings window for each one, styled like the vanilla game.
   - [Option 1: built-in saving](#option-1-built-in-saving)
   - [Option 2: your mod stores the values itself](#option-2-your-mod-stores-the-values-itself)
 - [Your own window](#your-own-window)
+- [Toolbar Set actions](#toolbar-set-actions)
 - [Without the hub, load order](#without-the-hub-load-order)
+- [Upgrading from Mod Settings](#upgrading-from-mod-settings)
 - [Rules and limitations](#rules-and-limitations)
 - [Troubleshooting](#troubleshooting)
 - [Repository layout](#repository-layout)
@@ -51,21 +58,21 @@ settings window for each one, styled like the vanilla game.
 
 ## Quick start
 
-**1. Copy the client file** [`Client/ModSettings.cs`](Client/ModSettings.cs) into your mod **unchanged**:
+**1. Copy the client file** [`Client/ModUI.cs`](Client/ModUI.cs) into your mod **unchanged**:
 
 ```
-<YourMod>DataScripts<YourMod>ModSettings.cs
+<YourMod>\Data\Scripts\<YourMod>\ModUI.cs
 ```
 
 Each mod is compiled separately, so the same class names in different mods do not conflict.
 
-**2. Make [Mod Settings](https://steamcommunity.com/sharedfiles/filedetails/?id=3842864536) (Workshop ID `3842864536`) a required dependency** of your mod on the Steam Workshop,
-so the game downloads the hub automatically. To test locally, put this repository into `%AppData%\SpaceEngineers\Mods\Mod Settings` and add both mods to the world.
+**2. Make [Mod UI](https://steamcommunity.com/sharedfiles/filedetails/?id=3842864536) (Workshop ID `3842864536`) a required dependency** of your mod on the Steam Workshop,
+so the game downloads the hub automatically. To test locally, put this repository into `%AppData%\SpaceEngineers\Mods\Mod UI` and add both mods to the world.
 
 **3. Describe your settings** in a session component:
 
 ```csharp
-using ModSettings;
+using Fd32.ModUI;
 using Sandbox.ModAPI;
 using VRage.Game.Components;
 using VRage.Input;
@@ -109,7 +116,7 @@ public class MyModSettings : MySessionComponentBase
 **4. In the game:** press **Esc**, click the **gear** to the right of **Options**, and pick **My Mod**.
 Change something and press **OK**. The new values are now in `Speed.Value`, `ShowHints.Value`, `LinkKey`.
 
-> **Saving is optional.** The two `LocalStorage` lines turn on the built-in saving of Mod Settings. Remove them if your
+> **Saving is optional.** The two `LocalStorage` lines turn on the built-in saving of Mod UI. Remove them if your
 > mod stores its values itself; see [Saving values](#saving-values) for an example.
 
 That is all a typical mod needs. The rest of this document covers every feature in detail.
@@ -119,9 +126,9 @@ That is all a typical mod needs. The rest of this document covers every feature 
 ## How it works
 
 ```
- your mod                                       Mod Settings (hub)
+ your mod                                       Mod UI (hub)
 ┌──────────────────────────┐   SendModMessage   ┌────────────────────────────┐
-│ ModSettings.cs (client)  │ ─────────────────► │ gear in the Esc menu       │
+│ ModUI.cs (client)        │ ─────────────────► │ gear in the Esc menu       │
 │  menu description,       │                    │ list of mods               │
 │  values, events          │ ◄───────────────── │ settings window            │
 └──────────────────────────┘ edits, OK, buttons └────────────────────────────┘
@@ -501,7 +508,7 @@ Menu.Applied += () => Menu.SaveToLocalStorage();
 - File: `ModSettings_<id>.txt` in **your mod's** local storage (`%AppData%\SpaceEngineers\Storage\<your mod>\`).
 - Format: `key=value` lines; `#` starts a comment.
   ```
-  # My Mod 1.0: settings (Mod Settings), key=value lines
+  # My Mod 1.0: settings (Mod UI), key=value lines
   speed=20
   hints=true
   units=kmh
@@ -518,7 +525,7 @@ read them back after OK. For example, a mod that keeps an XML config:
 
 ```csharp
 using System;
-using ModSettings;
+using Fd32.ModUI;
 using Sandbox.ModAPI;
 using VRage.Utils;
 
@@ -608,6 +615,114 @@ A mod window (`MyModScreen`) opens over the hub's window. **Esc** returns to the
 
 ---
 
+## Toolbar Set actions
+
+Since update 1.211 an action can carry values. Each toolbar slot stores its own values and runs the action with them,
+like the vanilla *Set Intensity* or *Set Height*. The game's own input dialog is not available to mods, so Mod UI draws one.
+
+```
+┌──────────────────── Set light ────────────────────[×]┐
+│ Radius                                               │
+│ [−] ══════●═════════════════  [  5.0  ]  [+]  m      │
+│ Mode                                                 │
+│ [ Blink                                          ▼ ] │
+│ Light                                                │
+│ [ On                                             ▼ ] │
+│ ──────────────────────────────────────────────────── │
+│ Toolbar label                                        │
+│ [ R5.0 On                                          ] │
+│ ──────────────────────────────────────────────────── │
+│                 [   OK   ]  [ Cancel ]               │
+└──────────────────────────────────────────────────────┘
+```
+
+**What the player sees:** they drag the action onto a toolbar (G screen, timer, event controller…). One window asks
+for all values and the label under the slot icon.
+- The first text field has the focus with its value selected, so the player can type a number and press **Enter**.
+- **Enter** moves to the next text field. In the last one, in the label field or outside the fields, it presses **OK**.
+- The label follows the values until the player edits it by hand.
+- **Cancel**, **Esc** and **×** close the window, and the action is not placed on the toolbar.
+
+```csharp
+using Fd32.ModUI;
+using Sandbox.ModAPI;
+using VRage.Game.Components;
+
+[MySessionComponentDescriptor(MyUpdateOrder.NoUpdate)]
+public class MyActions : MySessionComponentBase
+{
+    public override void BeforeStart()
+    {
+        var a = ModUI.SetAction<IMyLightingBlock>("MyMod_SetLight", "Set light");   // action id, name in the G list
+        var radius = a.Number("Radius", 5).Range(0.5f, 20).Step(0.5f).Unit("m").Slider().Field().Buttons();
+        var mode   = a.Choice("Mode", "blink").Option("steady", "Steady").Option("blink", "Blink");
+        var on     = a.Toggle("Light", true).Texts("On", "Off");
+        a.Label("R{0} {2}");                    // toolbar label: {0} = radius, {2} = light
+        a.Enabled(b => ModUI.IsReady);          // no hub → no action in the G list (your choice)
+        a.Check = v => v.Get(radius) > 15 && !v.Get(on)
+            ? v.Error(radius, "Radius above 15 m only with the light on") : null;
+        a.Run = (block, v) =>                   // the slot was pressed: its own values
+        {
+            block.Radius  = v.Get(radius);
+            block.Enabled = v.Get(on);
+        };
+        a.Register();
+    }
+}
+```
+
+| Value | `v.Get(...)` | In the window |
+|---|---|---|
+| `Number(label, default)` | `float` | slider, field and −/+ buttons, the same options as [Number](#number): `Range`, `Step`, `Decimals`, `Unit`, `Slider` / `Field` / `Buttons` |
+| `Choice(label, defaultKey)` + `.Option(key, label)` | `string` (option key) | combo box |
+| `Toggle(label, default)` + `.Texts(on, off)` | `bool` | combo box with two options; without `Texts` — On / Off (Вкл / Выкл in Russian) |
+| `Text(label, default = "")` + `.MaxLength`, `.Placeholder` | `string` | text field |
+
+Values have no keys: they are identified by **their order**. `.Tooltip(text)` works as in settings.
+
+**The toolbar label**
+- `Label(template)`: `{0}`, `{1}`… are the values in order (`string.Format`). A number is shown with its decimals but **without** the unit;
+  a choice or on/off shows the option text.
+- Without a template the label is the values separated by spaces (a number with its unit).
+- **9 characters at most**: the game cuts longer labels. The field accepts 9 characters, and a template that gives more is cut,
+  with a line in the hub's log.
+- `AskLabel(false)` removes the label field; the label is then made from the template.
+
+**`SetAction<TBlock>` members**
+
+| Member | Description |
+|---|---|
+| `ModUI.SetAction<TBlock>(id, name)` | `TBlock` is a block interface, such as `IMyLightingBlock`. `id` is permanent; `name` is shown in the G list and as the window title. |
+| `Icon(path)` | Toolbar icon (`.dds`). Default: the vanilla `Textures\GUI\Icons\Actions\SetValue.dds`. |
+| `Enabled(Func<IMyTerminalBlock, bool>)` | Whether the block offers the action. By default, always. |
+| `Label(template)`, `AskLabel(bool)` | See above. |
+| `Check = v => …` | Called on OK. Return `null` to accept, or a message to refuse: the player sees it and the window stays open. `v.Error(value, text)` also turns that value's label red. |
+| `Run = (block, v) => …` | The slot was pressed (by the player, a timer, an event controller…). `v.Get(value)` gives the slot's values. |
+| `Register()` | Creates the action and adds it to `TBlock`. Call it once. |
+| `TerminalAction` | The created `IMyTerminalAction`, if you want to adjust it yourself. |
+
+**Rules**
+- Call `Register()` in `BeforeStart` (or wherever your mod adds terminal controls), **also on a dedicated server**:
+  timers and event controllers run actions there.
+- **Add new values only at the end** and never reorder them. Slots store values by position. Values missing from old
+  slots, or of the wrong type, fall back to the defaults. A choice is stored as its key, so you can reorder its options.
+- `ModUI.IsReady` asks the hub whether it can draw the window (at most once a second). Without the hub nothing is asked,
+  and the action is not placed. Whether to hide the action is up to your mod.
+
+**Your own action.** If you build the `IMyTerminalAction` yourself, use a form with the same value methods:
+
+```csharp
+var form = ModUI.Form("Go to station");
+var station = form.Number("Station", 1).Range(1, 9).Step(1).Field().Buttons();
+form.Label("St {0}");
+
+form.AddParameterDefinitions(action);                                      // the defaults, in order
+action.DoUserParameterRequestWithItem = (item, done) => form.Ask(item, done);
+action.ActionWithParameters = (block, args) => GoTo(block, (int)form.Read(args).Get(station));
+```
+
+---
+
 ## Without the hub, load order
 
 - **Load order does not matter.** If the hub loads before your mod, it accepts `Register()` at once. If it loads
@@ -619,9 +734,18 @@ A mod window (`MyModScreen`) opens over the hub's window. **Esc** returns to the
 
 ---
 
+## Upgrading from Mod Settings
+
+Mod UI is the same Workshop item (ID `3842864536`) under a new name. Old copies of `ModSettings.cs` keep working.
+To update a mod:
+1. Delete `ModSettings.cs` from your mod and copy [`Client/ModUI.cs`](Client/ModUI.cs) instead.
+2. Replace `using ModSettings;` with `using Fd32.ModUI;`.
+
+The class names are the same, and the saved files (`ModSettings_<id>.txt`) keep their names, so players keep their settings.
+
 ## Rules and limitations
 
-- **Do not edit `ModSettings.cs`.** Copy it as is. To update, replace it with the newer version from this repository.
+- **Do not edit `ModUI.cs`.** Copy it as is. To update, replace it with the newer version from this repository.
 - **Never change `id` and setting `key`s** between versions: saved values and the hub depend on them.
   Labels can change freely.
 - **Keys must be unique within a menu.** If a key is repeated, the hub does not accept the menu and writes a line to its log.
@@ -636,10 +760,12 @@ Look at the game log: `%AppData%\SpaceEngineers\SpaceEngineers_*.log`.
 
 | Log line | Meaning |
 |---|---|
-| `ModSettings| Mod Settings V…` | The hub has loaded. |
-| `ModSettings client: <id>: центр принял меню` | The hub accepted your menu ("hub accepted the menu"). |
-| `ModSettings client: <id>: центр Mod Settings устарел…` | The hub is older than your client file ("hub is outdated"). |
-| `ModSettings client: <id>: ошибка в …` | Your event handler threw an exception (full stack trace follows). |
+| `ModUI| Mod UI V…` | The hub has loaded. |
+| `ModUI client: <id>: центр принял меню` | The hub accepted your menu ("hub accepted the menu"). |
+| `ModUI client: <id>: центр Mod UI устарел…` | The hub is older than your client file ("hub is outdated"). |
+| `ModUI client: <caption>: центра Mod UI нет — окна ввода не будет` | A Set action was placed, but the hub is missing ("no hub, no input window"). |
+| `ModUI| окно ввода: …`, `ModUI| … длиннее 9 символов — обрезана` | The hub refused an input window, or a label template gives more than 9 characters ("cut"). |
+| `ModUI client: <id>: ошибка в …` | Your event handler threw an exception (full stack trace follows). |
 | `MOD_ERROR` / `is prohibited` | The game refused to compile a mod (whitelist). |
 
 - **No gear in the Esc menu:** the hub is not loaded. Check the dependency or add it to the world.
@@ -653,12 +779,12 @@ Look at the game log: `%AppData%\SpaceEngineers\SpaceEngineers_*.log`.
 
 | Path | Contents |
 |---|---|
-| `Client/ModSettings.cs` | **The client file** that mod authors copy. The reference copy: the game does not compile it from here. |
-| `Data/Scripts/ModSettings/` | The hub: the gear in the Esc menu (`HubSession.cs`, `Menu.cs`), the window (`SettingsWindow.cs`), the GUI helper (`Gx.cs`), hub strings (`Loc.cs`). |
-| `Data/TransparentMaterials_ModSettings.sbc` | Materials over vanilla GUI textures. |
-| `ModSettings.csproj` | Compile check only: `dotnet build ModSettings.csproj` (set `SEBin64` to your `SpaceEngineers\Bin64`). It does not check the whitelist; only the game does. |
+| `Client/ModUI.cs` | **The client file** that mod authors copy. The reference copy: the game does not compile it from here. |
+| `Data/Scripts/ModUI/` | The hub: the gear in the Esc menu (`HubSession.cs`, `Menu.cs`), the window (`SettingsWindow.cs`), the toolbar input window (`Forms.cs`), the GUI helper (`Gx.cs`), hub strings (`Loc.cs`). |
+| `Data/TransparentMaterials_ModUI.sbc` | Materials over vanilla GUI textures. |
+| `ModUI.csproj` | Compile check only: `dotnet build ModUI.csproj` (set `SEBin64` to your `SpaceEngineers\Bin64`). It does not check the whitelist; only the game does. |
 | `TESTS.md` | In-game test plans (in Russian). |
 
 ## License
 
-[MIT](LICENSE). You may copy `ModSettings.cs` into any mod, including commercial or closed ones.
+[MIT](LICENSE). You may copy `ModUI.cs` into any mod, including commercial or closed ones.
