@@ -7,7 +7,8 @@
 - **Settings.** Your mod describes its settings in a few lines of C#. Mod UI adds a gear button next to **Options**
   in the in-game Esc menu, lists every mod that uses it, and draws a settings window for each one.
 - **Values for toolbar actions.** Your mod adds *Set* actions with values (number, choice, on/off, text). When the player puts
-  one on a toolbar, Mod UI asks for the values and the slot label in one window. See [Toolbar Set actions](#toolbar-set-actions).
+  one on a toolbar, Mod UI asks for the values and the slot label in one window. Your mod can also open this window itself,
+  for example from a terminal button. See [Input window and toolbar Set actions](#input-window-and-toolbar-set-actions).
 
 [Русская версия](README.ru.md)
 
@@ -25,28 +26,33 @@
 
 - [Quick start](#quick-start)
 - [How it works](#how-it-works)
-- [The settings window](#the-settings-window)
-- [Building the menu](#building-the-menu)
-  - [SettingsMenu](#settingsmenu)
-  - [Tabs and groups](#tabs-and-groups)
-  - [Info panel](#info-panel)
-- [Setting types](#setting-types)
-  - [Toggle](#toggle)
-  - [Number](#number)
-  - [Choice](#choice)
-  - [Text](#text)
-  - [Hotkey](#hotkey)
-  - [Label, Separator, Button](#label-separator-button)
-  - [Common to all settings](#common-to-all-settings)
-- [Events: from opening the window to OK](#events-from-opening-the-window-to-ok)
-  - [Editing: live changes, Enabled, Visible, presets](#editing-live-changes-enabled-visible-presets)
-  - [Applying: validate and refuse](#applying-validate-and-refuse)
-- [Messages and confirmations](#messages-and-confirmations)
-- [Saving values](#saving-values)
-  - [Option 1: built-in saving](#option-1-built-in-saving)
-  - [Option 2: your mod stores the values itself](#option-2-your-mod-stores-the-values-itself)
-- [Your own window](#your-own-window)
-- [Toolbar Set actions](#toolbar-set-actions)
+- [Settings window (Esc menu)](#settings-window-esc-menu)
+  - [The window](#the-window)
+  - [Building the menu](#building-the-menu)
+    - [SettingsMenu](#settingsmenu)
+    - [Tabs and groups](#tabs-and-groups)
+    - [Info panel](#info-panel)
+  - [Setting types](#setting-types)
+    - [Toggle](#toggle)
+    - [Number](#number)
+    - [Choice](#choice)
+    - [Text](#text)
+    - [Hotkey](#hotkey)
+    - [Label, Separator, Button](#label-separator-button)
+    - [Common to all settings](#common-to-all-settings)
+  - [Events: from opening the window to OK](#events-from-opening-the-window-to-ok)
+    - [Editing: live changes, Enabled, Visible, presets](#editing-live-changes-enabled-visible-presets)
+    - [Applying: validate and refuse](#applying-validate-and-refuse)
+  - [Messages and confirmations](#messages-and-confirmations)
+  - [Saving values](#saving-values)
+    - [Option 1: built-in saving](#option-1-built-in-saving)
+    - [Option 2: your mod stores the values itself](#option-2-your-mod-stores-the-values-itself)
+  - [Your own window](#your-own-window)
+- [Input window and toolbar Set actions](#input-window-and-toolbar-set-actions)
+  - [The input window](#the-input-window)
+  - [Toolbar Set actions](#toolbar-set-actions)
+  - [Your own action](#your-own-action)
+  - [Window without a toolbar](#window-without-a-toolbar)
 - [Without the hub, load order](#without-the-hub-load-order)
 - [Upgrading from Mod Settings](#upgrading-from-mod-settings)
 - [Rules and limitations](#rules-and-limitations)
@@ -121,6 +127,8 @@ Change something and press **OK**. The new values are now in `Speed.Value`, `Sho
 
 That is all a typical mod needs. The rest of this document covers every feature in detail.
 
+For a toolbar *Set* action or an input window, see [Input window and toolbar Set actions](#input-window-and-toolbar-set-actions).
+
 ---
 
 ## How it works
@@ -140,7 +148,13 @@ That is all a typical mod needs. The rest of this document covers every feature 
   Your code talks only to it and never sees the protocol.
 - Settings are **personal** (client-side, per player). Each player sees their own values.
 
-## The settings window
+---
+
+## Settings window (Esc menu)
+
+Everything about the settings window: the gear in the Esc menu, the menu your mod describes, events and saving.
+
+### The window
 
 ```
 ┌───────────────────────────── My Mod ───────────────────────────────[×]┐
@@ -165,9 +179,7 @@ That is all a typical mod needs. The rest of this document covers every feature 
   - **Defaults** resets **the whole mod** (all tabs) to its defaults in the window. They still need **OK**.
 - The hub's own buttons and captions are in Russian when the game language is Russian, and in English otherwise.
 
----
-
-## Building the menu
+### Building the menu
 
 Items appear in the window in the order you add them. `SettingsMenu`, `SettingsTab` and `SettingsGroup` share the
 same methods for adding items (`Toggle`, `Number`, `Choice`, `Text`, `Hotkey`, `Label`, `Separator`, `Button`).
@@ -182,7 +194,7 @@ SettingsMenu            a line in the gear menu + the window titled with the mod
          └─ items
 ```
 
-### SettingsMenu
+#### SettingsMenu
 
 ```csharp
 Menu = new SettingsMenu("mymod", "My Mod", "1.0");
@@ -204,7 +216,7 @@ Menu = new SettingsMenu("mymod", "My Mod", "1.0");
 
 The gear menu lists mods in alphabetical order of their names.
 
-### Tabs and groups
+#### Tabs and groups
 
 ```csharp
 var hud = Menu.Tab("HUD");
@@ -218,7 +230,7 @@ adv.Toggle("debug", "Debug overlay", false);
 - `Collapsible(startCollapsed = false)` makes a group fold and unfold when its header is clicked.
 - Groups are one level deep: a group is created from a menu or a tab, not from another group.
 
-### Info panel
+#### Info panel
 
 ```csharp
 Menu.Info("# My Mod\nLine one.\nLine two.");                     // shared by all tabs
@@ -231,9 +243,7 @@ Menu.Info(() => "# Status\nTrains running: " + TrainCount);       // live text
 - A tab's own `Info` replaces the menu's `Info` for that tab.
 - When there is no info at all, the info panel is hidden and the middle column becomes wider.
 
----
-
-## Setting types
+### Setting types
 
 Each method returns a **setting object**. Keep it in a field and read `.Value` wherever you need it.
 Fine-tuning uses chained calls: `.Range(0, 100).Step(5).Unit("m/s")`.
@@ -248,14 +258,14 @@ Fine-tuning uses chained calls: `.Range(0, 100).Step(5).Unit("m/s")`.
 | `Text(key, label, default = "")` | `string` | vanilla text field |
 | `Hotkey(key, label, MyKeys, MyKeyboardModifiers = None)` | `HotkeyValue` | key binding row, like the vanilla Controls screen |
 
-### Toggle
+#### Toggle
 
 ```csharp
 ShowHints = Menu.Toggle("hints", "Show hints", true);
 if (ShowHints.Value) { ... }
 ```
 
-### Number
+#### Number
 
 ```csharp
 Speed = Menu.Number("speed", "Cruise speed", 20)
@@ -280,7 +290,7 @@ int   i = Speed.IntValue;           // rounded to an integer
 Values set from code are normalized too: `Speed.Value = 1000` with `Range(0, 120)` gives `120`.
 Commas and dots are both accepted as the decimal separator in the field.
 
-### Choice
+#### Choice
 
 ```csharp
 Units = Menu.Choice("units", "Speed units", "ms")
@@ -297,7 +307,7 @@ if (Units.Value == "kmh") { ... }
 - The list shows up to 10 rows and scrolls beyond that. It opens upwards when there is no room below.
 - `Keys` returns all option keys.
 
-### Text
+#### Text
 
 ```csharp
 ShipName = Menu.Text("name", "Ship name", "Wanderer")
@@ -313,7 +323,7 @@ ShipName = Menu.Text("name", "Ship name", "Wanderer")
 - **Ctrl+V is not available**: the mod whitelist does not allow reading the clipboard.
 - An empty or otherwise invalid value is refused in [`Applying`](#applying-validate-and-refuse).
 
-### Hotkey
+#### Hotkey
 
 ```csharp
 LinkKey  = Menu.Hotkey("link",  "Link",         MyKeys.R);
@@ -365,7 +375,7 @@ If your mod needs a key, refuse an empty one in `Applying`.
 | `new HotkeyValue(MyKeys, MyKeyboardModifiers)` | Creates a value, for example for `e.Set` or `.Value =`. |
 | `ToString()` / `TryParse` | `"Ctrl+Shift+R"`, the format used in saved files. `""` means no key. |
 
-### Label, Separator, Button
+#### Label, Separator, Button
 
 These are not settings but layout and actions:
 
@@ -380,7 +390,7 @@ Menu.Button("Reset statistics", () => ResetStats())
 - `Button(label, action)` runs **immediately**, without OK. To ask the player first, call
   [`ShowConfirm`](#messages-and-confirmations) inside the action.
 
-### Common to all settings
+#### Common to all settings
 
 ```csharp
 T     Value { get; set; }    // current value; setting it from code does not raise Changed and saves nothing
@@ -396,9 +406,7 @@ string Key, Label            // what you passed in
 - You can change `Enabled` / `Visible` at any time. The window picks the change up by itself. The usual place is `Menu.Editing`.
 - If you set `.Value` while the window is open, the window shows the new value only on rows the player has not touched yet.
 
----
-
-## Events: from opening the window to OK
+### Events: from opening the window to OK
 
 The hub does not try to guess your mod's logic. It reports every step, and your mod decides what happens.
 
@@ -419,7 +427,7 @@ Opened ─► Editing (Changed = null) ─► Editing ... Editing ─► OK ─�
 
 Until OK, values live in the **window draft**. `.Value` changes only after OK is accepted.
 
-### Editing: live changes, Enabled, Visible, presets
+#### Editing: live changes, Enabled, Visible, presets
 
 ```csharp
 Menu.Editing += e =>
@@ -445,7 +453,7 @@ Menu.Editing += e =>
   The value is normalized (range, step, options, length).
 - After Defaults, `Editing` is called with `Changed == null`, so the same code puts Enabled / Visible right.
 
-### Applying: validate and refuse
+#### Applying: validate and refuse
 
 ```csharp
 Menu.Applying += e =>
@@ -469,9 +477,7 @@ Menu.Applying += e =>
 - Write the message in the player's language. Your mod can read the game language as well.
 - If `Applying` throws, the hub shows "The mod failed to apply the settings", and the exception goes to the game log.
 
----
-
-## Messages and confirmations
+### Messages and confirmations
 
 ```csharp
 Menu.ShowMessage("Statistics cleared.");                         // window with OK
@@ -488,14 +494,12 @@ Menu.Button("Reset everything", () =>
 - Without the hub, `ShowMessage` falls back to an on-screen notification. `ShowConfirm` does not ask at all, and
   writes a line to the log instead.
 
----
-
-## Saving values
+### Saving values
 
 **Saving is optional.** The hub itself stores nothing. The client file can save and load the values for you,
 but you do not have to use that: your mod can store them any way it likes. Choose one of the two options below.
 
-### Option 1: built-in saving
+#### Option 1: built-in saving
 
 Two lines, and the values survive a game restart:
 
@@ -517,7 +521,7 @@ Menu.Applied += () => Menu.SaveToLocalStorage();
 - On loading: a key missing from the file keeps its current value, unknown keys are skipped, and a corrupt value
   becomes the default (with a line in the log). `Changed` is not raised.
 
-### Option 2: your mod stores the values itself
+#### Option 2: your mod stores the values itself
 
 Use this when the mod already has its own config, or needs a different file, format or place.
 Do not call `LoadFromLocalStorage` / `SaveToLocalStorage`. Instead, put your values into `.Value` at load time and
@@ -595,9 +599,7 @@ public override void LoadData()
 - **Defaults** in the window come from the defaults you pass to `Number` / `Toggle` / ..., not from your config.
 - Instead of `Applied`, you can save individual settings in their `Changed` handlers.
 
----
-
-## Your own window
+### Your own window
 
 If the standard window is not enough:
 
@@ -615,10 +617,12 @@ A mod window (`MyModScreen`) opens over the hub's window. **Esc** returns to the
 
 ---
 
-## Toolbar Set actions
+## Input window and toolbar Set actions
 
-Since update 1.211 an action can carry values. Each toolbar slot stores its own values and runs the action with them,
-like the vanilla *Set Intensity* or *Set Height*. The game's own input dialog is not available to mods, so Mod UI draws one.
+Mod UI draws one window that asks for values. Your mod uses it for toolbar *Set* actions,
+or opens it itself, for example from a terminal button.
+
+### The input window
 
 ```
 ┌──────────────────── Set light ────────────────────[×]┐
@@ -642,6 +646,11 @@ for all values and the label under the slot icon.
 - **Enter** moves to the next text field. In the last one, in the label field or outside the fields, it presses **OK**.
 - The label follows the values until the player edits it by hand.
 - **Cancel**, **Esc** and **×** close the window, and the action is not placed on the toolbar.
+
+### Toolbar Set actions
+
+Since update 1.211 an action can carry values. Each toolbar slot stores its own values and runs the action with them,
+like the vanilla *Set Intensity* or *Set Height*. The game's own input dialog is not available to mods, so Mod UI draws one.
 
 ```csharp
 using Fd32.ModUI;
@@ -711,7 +720,9 @@ Values have no keys: they are identified by **their order**. `.Tooltip(text)` wo
 - On a dedicated server `ModUI.IsReady` is always `true`: the game checks an action's `Enabled` before it runs it too,
   and timers there must run it. Client files before V0.9.2 returned `false` there - copy the new `ModUI.cs`.
 
-**Your own action.** If you build the `IMyTerminalAction` yourself, use a form with the same value methods:
+### Your own action
+
+If you build the `IMyTerminalAction` yourself, use a form with the same values (see the table in [Toolbar Set actions](#toolbar-set-actions)):
 
 ```csharp
 var form = ModUI.Form("Go to station");
@@ -723,7 +734,9 @@ action.DoUserParameterRequestWithItem = (item, done) => form.Ask(item, done);
 action.ActionWithParameters = (block, args) => GoTo(block, (int)form.Read(args).Get(station));
 ```
 
-**The window without a toolbar slot** (V0.9.3 client file), for example from a terminal button: `form.Open(ok, cancel)`.
+### Window without a toolbar
+
+The same window without a toolbar slot (V0.9.3 client file), for example from a terminal button: `form.Open(ok, cancel)`.
 There is no label field; `ok` gets the values, `cancel` (optional) runs on Cancel / Esc, or at once without the hub.
 
 ```csharp
